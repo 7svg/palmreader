@@ -145,27 +145,25 @@
       function startPhotoProcess() {
         const name = document.getElementById("fullName").value.trim();
         const mobile = document.getElementById("mobile").value.trim();
+        const dominantHand = document.getElementById("dominantHand").value;
+
         if (!name || !mobile) {
           alert("Please enter your name and contact details first.");
           return;
         }
+
+        // MIRROR THE SVG OUTLINES IF LEFT HAND IS SELECTED
+        const guideOverlay = document.getElementById("guideOverlay");
+        if (dominantHand === "Left") {
+          guideOverlay.classList.add("-scale-x-100"); // Flips it horizontally
+        } else {
+          guideOverlay.classList.remove("-scale-x-100"); // Keeps it normal for Right
+        }
+
         document.getElementById("step-details").classList.add("hidden");
         document.getElementById("step-camera").classList.remove("hidden");
         initCamera();
         updateStepUI();
-      }
-
-      async function initCamera() {
-        try {
-          // Force high resolution for clearer palm lines
-          videoStream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } },
-            audio: false
-          });
-          video.srcObject = videoStream;
-        } catch (err) {
-          alert("Camera permission denied or unavailable: " + err.message);
-        }
       }
 
       function updateStepUI() {
