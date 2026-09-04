@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Consultation Feedback</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex items-center justify-center p-4">
+  <div class="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-xl text-center">
+    <h1 class="text-xl font-bold text-amber-400">Consultation Feedback</h1>
+    <p class="text-xs text-slate-400">How was your palmistry session? Your review helps us improve.</p>
+
+    <!-- Star Rating -->
+    <div class="flex justify-center gap-3 py-2 text-3xl cursor-pointer" id="starContainer">
+      <span onclick="setRating(1)">★</span>
+      <span onclick="setRating(2)">★</span>
+      <span onclick="setRating(3)">★</span>
+      <span onclick="setRating(4)">★</span>
+      <span onclick="setRating(5)">★</span>
+    </div>
+
+    <textarea id="reviewText" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm focus:border-amber-400 outline-none h-28" placeholder="Write your feedback here..."></textarea>
+
+    <button onclick="submitReview()" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-3 rounded-xl transition">
+      Submit Review
+    </button>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://simfpaytvkqgknrrhvoj.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_rfqgEkkZhzNEWKCxtPNZog_no_8KR5F";
+    const supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+    let selectedRating = 5;
+    const urlParams = new URLSearchParams(window.location.search);
+    const submissionId = urlParams.get("id");
+
+    function setRating(r) {
+      selectedRating = r;
+      const stars = document.getElementById("starContainer").children;
+      for (let i = 0; i < 5; i++) {
+        stars[i].style.color = i < r ? "#f59e0b" : "#475569";
+      }
+    }
+    setRating(5);
+
+    async function submitReview() {
+      const review = document.getElementById("reviewText").value;
+      if (supabase && submissionId) {
+        await supabase.from("palm_inquiries").update({
+          client_rating: selectedRating,
+          client_review: review
+        }).eq("id", submissionId);
+      }
+      alert("Thank you! Your feedback has been submitted.");
+    }
+  </script>
+</body>
+</html>

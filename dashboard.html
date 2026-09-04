@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Palm Reader Admin Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen">
+  <div class="max-w-7xl mx-auto p-6 space-y-6">
+    
+    <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+      <div>
+        <h1 class="text-2xl font-bold text-amber-400">Consultation Dashboard</h1>
+        <p class="text-sm text-slate-400">Review palm prints, inspect fingers, schedule calls, and record notes.</p>
+      </div>
+      <button id="refreshBtn" class="bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg text-sm transition">Refresh Inquiries</button>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      
+      <!-- List Column -->
+      <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 h-[750px] overflow-y-auto space-y-3">
+        <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Incoming Requests</h2>
+        <div id="inquiryList" class="space-y-2">
+          <p class="text-xs text-slate-500">Loading inquiries...</p>
+        </div>
+      </div>
+
+      <!-- Detail / Inspection Viewer -->
+      <div id="detailPanel" class="md:col-span-2 bg-slate-950 border border-slate-800 rounded-xl p-6 h-[750px] overflow-y-auto hidden space-y-6">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div>
+            <h3 id="clientName" class="text-xl font-bold text-white">Client Name</h3>
+            <p id="clientMeta" class="text-xs text-slate-400 mt-0.5">DOB: - | Place: - | Dominant: -</p>
+          </div>
+          <div class="flex gap-2">
+            <button id="markScheduledBtn" class="bg-blue-600/80 hover:bg-blue-600 text-xs px-3 py-1.5 rounded-lg">Mark Scheduled</button>
+            <button id="completeBtn" class="bg-emerald-600/80 hover:bg-emerald-600 text-xs px-3 py-1.5 rounded-lg">Complete & Send Review Link</button>
+          </div>
+        </div>
+
+        <div>
+          <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Captured Palm & Fingerprint Views (Click to Enlarge)</h4>
+          <div id="photoGrid" class="grid grid-cols-2 sm:grid-cols-5 gap-3"></div>
+        </div>
+
+        <div>
+          <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Consultation Notes</h4>
+          <textarea id="astrologerNotes" class="w-full bg-slate-900 border border-slate-800 rounded-lg p-3 text-sm focus:border-amber-400 outline-none h-28" placeholder="Type reading observations, line formations, and guidance points..."></textarea>
+          <button id="saveNotesBtn" class="mt-2 bg-slate-800 hover:bg-slate-700 text-xs px-4 py-2 rounded-lg transition">Save Notes</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      
+      const SUPABASE_URL = "https://simfpaytvkqgknrrhvoj.supabase.co";
+      const SUPABASE_ANON_KEY = "sb_publishable_rfqgEkkZhzNEWKCxtPNZog_no_8KR5F";
+      const supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+      let inquiries = [];
+      let activeInquiry = null;
+
+      // Bind buttons
+      document.getElementById("refreshBtn").addEventListener("click", fetchInquiries);
+      document.getElementById("markScheduledBtn").addEventListener("click", () => updateStatus('Call Scheduled'));
+      document.getElementById("completeBtn").addEventListener("click", completeAndSendFeedback);
+      document.getElementById("saveNotesBtn").addEventListener("click", saveNotes);
+
+      // Helper function to turn Google Drive links into Direct Image Previews
+      function getDirectImageUrl(url) {
+        if (!url) return "";
+        let fileId = "";
+        
+        // Extract the unique File ID from the Google Drive URL
+        const idMatch = url.match(/id=([a-zA-Z0-9_-]+)/);
+        if (idMatch) {
+          fileId = idMatch[1];
+        } else {
+          const dMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+          if (dMatch) fileId = dMatch[1];
+        }
+        
+        // Use Google's thumbnail API to generate a raw preview image
+        if (fileId) {
+          return `https://drive.google.com/thumbnail?id=${fileId}&sz=w800`;
+        }
+        return url; 
+      }
+
+      async function fetchInquiries() {
+        if (!supabase) return;
+        try {
+          const { data, error } = await supabase
+            .from("palm_inquiries")
+            .select("*")
+            .order("created_at", { ascending: false });
+
+          if (data) {
+            inquiries = data;
+            renderList();
+          }
+        } catch (err) {
+          console.error("Network error:", err);
+        }
+      }
+
+      function renderList() {
+        const container = document.getElementById("inquiryList");
+        if (inquiries.length === 0) {
+          container.innerHTML = `<p class="text-xs text-slate-500">No submissions yet.</p>`;
+          return;
+        }
+        container.innerHTML = inquiries.map((item, idx) => `
+          <div data-idx="${idx}" class="inquiry-card p-3 bg-slate-900 hover:bg-slate-800/70 border border-slate-800/80 rounded-lg cursor-pointer transition">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-sm text-slate-200">${item.full_name}</span>
+              <span class="text-[10px] px-2 py-0.5 rounded-full ${item.status === 'Completed' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}">${item.status}</span>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-1">${new Date(item.created_at).toLocaleDateString()} &bull; ${item.mobile}</p>
+          </div>
+        `).join("");
+
+        document.querySelectorAll(".inquiry-card").forEach(card => {
+          card.addEventListener("click", (e) => {
+            const idx = e.currentTarget.getAttribute("data-idx");
+            selectInquiry(idx);
+          });
+        });
+      }
+
+      function selectInquiry(idx) {
+        activeInquiry = inquiries[idx];
+        document.getElementById("detailPanel").classList.remove("hidden");
+        document.getElementById("clientName").innerText = activeInquiry.full_name;
+        document.getElementById("clientMeta").innerText = `DOB: ${activeInquiry.dob} | Place: ${activeInquiry.birth_place} | Dominant Hand: ${activeInquiry.dominant_hand}`;
+        document.getElementById("astrologerNotes").value = activeInquiry.astrologer_notes || "";
+
+        const photoGrid = document.getElementById("photoGrid");
+        const photos = activeInquiry.photos || {};
+        
+        // Apply the direct image converter to the grid images
+        photoGrid.innerHTML = Object.entries(photos).map(([label, url]) => {
+          const directUrl = getDirectImageUrl(url);
+          return `
+            <div class="space-y-1">
+              <a href="${url}" target="_blank" class="block aspect-square bg-slate-900 rounded-lg overflow-hidden border border-slate-800 hover:border-amber-400 transition">
+                <img src="${directUrl}" class="w-full h-full object-cover" loading="lazy" />
+              </a>
+              <p class="text-[10px] text-slate-400 truncate text-center">${label.replace(/_/g, ' ')}</p>
+            </div>
+          `;
+        }).join("");
+      }
+
+      async function updateStatus(newStatus) {
+        if (!activeInquiry || !supabase) return;
+        await supabase.from("palm_inquiries").update({ status: newStatus }).eq("id", activeInquiry.id);
+        activeInquiry.status = newStatus;
+        fetchInquiries();
+      }
+
+      async function saveNotes() {
+        if (!activeInquiry || !supabase) return;
+        const notes = document.getElementById("astrologerNotes").value;
+        await supabase.from("palm_inquiries").update({ astrologer_notes: notes }).eq("id", activeInquiry.id);
+        alert("Notes saved successfully.");
+      }
+
+      async function completeAndSendFeedback() {
+        await updateStatus("Completed");
+        const feedbackUrl = `${window.location.origin}/feedback.html?id=${activeInquiry.id}`;
+        const message = encodeURIComponent(`Hello ${activeInquiry.full_name}, thank you for your palm reading consultation. Please share your rating and review here: ${feedbackUrl}`);
+        window.open(`https://wa.me/${activeInquiry.mobile.replace(/[^0-9]/g, '')}?text=${message}`, '_blank');
+      }
+
+      fetchInquiries();
+    });
+  </script>
+</body>
+</html>
