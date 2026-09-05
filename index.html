@@ -3,15 +3,46 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1">
-  <meta name="theme-color" content="#020617">
-  <title>Palm &amp; Finger Analysis</title>
+  <meta name="theme-color" content="#F6F2FC">
+  <title>Palm Reader</title>
   <link rel="icon" href="palmlogo.png">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-192.png">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&family=Noto+Sans+Gujarati:wght@400;700&display=swap" rel="stylesheet">
+
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            page:    "#F6F2FC",
+            field:   "#FAF8FE",
+            line:    "#E2D9F3",
+            ink:     { DEFAULT: "#2A1D4F", soft: "#6A5B8C", faint: "#A79BC4" },
+            saffron: { DEFAULT: "#F0A22E", deep: "#D68A12", light: "#FFF1D6" },
+            mehndi:  { DEFAULT: "#3E8E5A", light: "#DFF3E6" },
+            sindoor: { DEFAULT: "#D8434E", light: "#FBE1E3" },
+            gold:    "#C9A24D"
+          },
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', '"Noto Sans Gujarati"', "system-ui", "sans-serif"]
+          },
+          boxShadow: {
+            card: "0 10px 30px -12px rgba(42,29,79,0.18)",
+            lift: "0 6px 14px -6px rgba(214,138,18,0.45)"
+          }
+        }
+      }
+    };
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <style>
     html, body { height: 100%; }
     body {
@@ -19,282 +50,328 @@
       padding-bottom: env(safe-area-inset-bottom);
       -webkit-text-size-adjust: 100%;
       overscroll-behavior-y: contain;
+      font-family: "Plus Jakarta Sans", "Noto Sans Gujarati", system-ui, sans-serif;
     }
-    /* Stop iOS Safari from zooming when a field is focused */
-    input, select, textarea, button { font-size: 16px; }
+    html[lang="gu"] body { font-family: "Noto Sans Gujarati", "Plus Jakarta Sans", system-ui, sans-serif; }
+    input, select, textarea, button { font-size: 16px; font-family: inherit; }
+
     @keyframes pulse-red {
-      0%, 100% { background-color: rgba(185, 28, 28, .95); }
-      50%      { background-color: rgba(239, 68, 68, .95); }
+      0%, 100% { background-color: rgba(216, 67, 78, .96); }
+      50%      { background-color: rgba(190, 40, 52, .96); }
     }
-    .animate-pulse-red { animation: pulse-red 1.6s infinite; }
-    @media (prefers-reduced-motion: reduce) {
-      .animate-pulse-red, .animate-pulse, .animate-spin { animation: none !important; }
-    }
-    :focus-visible { outline: 2px solid #fbbf24; outline-offset: 2px; }
+    .animate-pulse-red { animation: pulse-red 1.4s infinite; }
     .spin { animation: spin 1s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) {
+      .animate-pulse-red, .animate-pulse, .spin { animation: none !important; }
+      * { transition-duration: 0ms !important; }
+    }
+    :focus-visible { outline: 3px solid #F0A22E; outline-offset: 2px; border-radius: 10px; }
+
+    /* Rotate prompt: only when the phone is on its side. */
+    #rotateOverlay { display: none; }
+    @media (orientation: landscape) and (max-height: 520px) {
+      #rotateOverlay { display: flex; }
+    }
   </style>
 </head>
-<body class="bg-slate-950 text-slate-100 flex flex-col items-center p-4">
+<body class="bg-page text-ink flex flex-col items-center p-4">
 
   <div class="max-w-md w-full space-y-4">
 
-    <header class="text-center pt-1 pb-2">
-      <img src="palmlogo.png" alt="" class="w-14 h-14 mx-auto rounded-xl mb-2" onerror="this.style.display='none'">
-      <h1 class="text-xl font-bold tracking-tight text-amber-400">Palm &amp; Finger Analysis</h1>
-      <p class="text-xs text-slate-400 mt-0.5">Ten guided photos, checked as you go.</p>
+    <header id="pageHeader" class="flex items-center justify-between pt-1 pb-1">
+      <div class="flex items-center gap-3">
+        <img src="palmlogo.png" alt="" class="w-12 h-12 rounded-xl" onerror="this.style.display='none'">
+        <div>
+          <h1 class="text-xl font-extrabold leading-tight">Palm Reader</h1>
+          <p class="text-xs text-ink-soft" data-i18n="tagline">Both hands, twenty photos, checked as you go.</p>
+        </div>
+      </div>
+      <button id="langBtn" type="button" aria-label="Switch language"
+              class="shrink-0 text-sm font-bold px-3 py-1.5 rounded-full border-2 border-line bg-white text-ink hover:border-saffron transition">
+        ગુજરાતી
+      </button>
     </header>
 
-    <!-- ============ SIGN IN ============ -->
-    <section id="step-auth" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+    <!-- ============ SIGN IN / CREATE ACCOUNT ============ -->
+    <section id="step-auth" class="hidden bg-white border border-line rounded-3xl p-6 shadow-card space-y-5">
       <div>
-        <h2 id="authTitle" class="text-sm font-semibold text-slate-200">Create your account</h2>
-        <p id="authBlurb" class="text-xs text-slate-400 mt-1">Use your mobile number and pick a password. You only do this once.</p>
+        <h2 id="authTitle" class="text-2xl font-extrabold leading-tight" data-i18n="auth.createTitle">Create your account</h2>
+        <p id="authBlurb" class="text-sm text-ink-soft mt-1.5 leading-relaxed" data-i18n="auth.createBlurb">Use your mobile number and pick a password. You only do this once.</p>
       </div>
 
       <div>
-        <label for="authMobile" class="block text-xs text-slate-400 mb-1">Mobile number</label>
-        <input id="authMobile" type="tel" inputmode="numeric" autocomplete="tel" placeholder="10 digits"
-               class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm focus:border-amber-400 outline-none">
+        <label for="authMobile" class="block text-sm font-semibold mb-1.5" data-i18n="auth.mobile">Mobile number</label>
+        <input id="authMobile" type="tel" inputmode="numeric" autocomplete="tel" data-i18n-ph="auth.mobilePh" placeholder="10 digits"
+               class="w-full bg-field border-2 border-line rounded-xl px-4 py-3.5 text-lg tracking-wide focus:border-saffron outline-none">
       </div>
       <div>
-        <label for="authPassword" class="block text-xs text-slate-400 mb-1">Password</label>
+        <label for="authPassword" class="block text-sm font-semibold mb-1.5" data-i18n="auth.password">Password</label>
         <input id="authPassword" type="password" autocomplete="new-password"
-               class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm focus:border-amber-400 outline-none">
-        <p id="authPasswordHint" class="text-[11px] text-slate-500 mt-1">Choose any password, at least 6 characters. Remember it for next time.</p>
+               class="w-full bg-field border-2 border-line rounded-xl px-4 py-3.5 text-lg focus:border-saffron outline-none">
+        <p id="authPasswordHint" class="text-xs text-ink-soft mt-1.5" data-i18n="auth.pwHintCreate">Choose any password, at least 6 characters. Remember it for next time.</p>
       </div>
 
-      <p id="authError" class="hidden text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg p-2.5"></p>
+      <p id="authError" class="hidden text-sm text-sindoor bg-sindoor-light border border-sindoor/30 rounded-xl px-4 py-3 font-semibold"></p>
 
       <button id="authSubmitBtn"
-              class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-3 rounded-xl transition disabled:opacity-60">
-        Create account
-      </button>
+              class="w-full bg-saffron hover:bg-saffron-deep text-ink text-lg font-extrabold py-4 rounded-2xl shadow-lift transition disabled:opacity-50"
+              data-i18n="auth.createBtn">Create account</button>
       <button id="authToggleBtn" type="button"
-              class="w-full text-sm text-amber-400 hover:text-amber-300 underline py-2">
-        Already have an account? Sign in
-      </button>
-      <p id="versionTag" class="text-[10px] text-slate-700 text-center"></p>
+              class="w-full text-sm text-ink font-semibold underline decoration-saffron decoration-2 underline-offset-4 py-1"
+              data-i18n="auth.toSignin">Already have an account? Sign in</button>
+      <p id="versionTag" class="text-[10px] text-ink-faint text-center"></p>
     </section>
 
     <!-- ============ DETAILS (first time only) ============ -->
-    <section id="step-profile" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
-      <div class="border-b border-slate-800 pb-2">
-        <h2 class="text-sm font-semibold text-slate-200">Your details</h2>
-        <p class="text-xs text-slate-400 mt-1">Entered once. We'll remember them next time.</p>
+    <section id="step-profile" class="hidden bg-white border border-line rounded-3xl p-6 shadow-card space-y-5">
+      <div>
+        <h2 class="text-2xl font-extrabold leading-tight" data-i18n="profile.title">Your details</h2>
+        <p class="text-sm text-ink-soft mt-1.5" data-i18n="profile.blurb">Entered once. We'll remember them next time.</p>
       </div>
 
       <div>
-        <label for="fullName" class="block text-xs text-slate-400 mb-1">Full name</label>
+        <label for="fullName" class="block text-sm font-semibold mb-1.5" data-i18n="profile.name">Full name</label>
         <input id="fullName" type="text" autocomplete="name"
-               class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm focus:border-amber-400 outline-none">
+               class="w-full bg-field border-2 border-line rounded-xl px-4 py-3.5 text-lg focus:border-saffron outline-none">
       </div>
 
       <div class="grid grid-cols-2 gap-3">
         <div>
-          <label for="dob" class="block text-xs text-slate-400 mb-1">Date of birth</label>
+          <label for="dob" class="block text-sm font-semibold mb-1.5" data-i18n="profile.dob">Date of birth</label>
           <input id="dob" type="date"
-                 class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm focus:border-amber-400 outline-none">
+                 class="w-full bg-field border-2 border-line rounded-xl px-3 py-3.5 text-base focus:border-saffron outline-none">
         </div>
         <div>
-          <label for="birthPlace" class="block text-xs text-slate-400 mb-1">Place</label>
-          <input id="birthPlace" type="text" placeholder="City"
-                 class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm focus:border-amber-400 outline-none">
+          <label for="birthPlace" class="block text-sm font-semibold mb-1.5" data-i18n="profile.place">Place</label>
+          <input id="birthPlace" type="text" data-i18n-ph="profile.placePh" placeholder="City"
+                 class="w-full bg-field border-2 border-line rounded-xl px-3 py-3.5 text-base focus:border-saffron outline-none">
         </div>
       </div>
 
       <div class="grid grid-cols-2 gap-3">
         <div>
-          <label for="mobile" class="block text-xs text-slate-400 mb-1">Mobile number</label>
+          <label for="mobile" class="block text-sm font-semibold mb-1.5" data-i18n="auth.mobile">Mobile number</label>
           <input id="mobile" type="tel" readonly
-                 class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-400 outline-none cursor-not-allowed">
+                 class="w-full bg-page border-2 border-line rounded-xl px-3 py-3.5 text-base text-ink-soft outline-none cursor-not-allowed">
         </div>
         <div>
-          <label for="dominantHand" class="block text-xs text-slate-400 mb-1">Dominant hand</label>
+          <label for="dominantHand" class="block text-sm font-semibold mb-1.5" data-i18n="profile.hand">Dominant hand</label>
           <select id="dominantHand"
-                  class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm focus:border-amber-400 outline-none">
-            <option value="Right">Right hand</option>
-            <option value="Left">Left hand</option>
+                  class="w-full bg-field border-2 border-line rounded-xl px-3 py-3.5 text-base focus:border-saffron outline-none">
+            <option value="Right" data-i18n="hand.right">Right hand</option>
+            <option value="Left"  data-i18n="hand.left">Left hand</option>
           </select>
+          <p class="text-xs text-ink-soft mt-1.5" data-i18n="profile.handHelp">The hand you write with.</p>
         </div>
       </div>
 
-      <p id="detailsError" class="hidden text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg p-2.5"></p>
+      <p id="detailsError" class="hidden text-sm text-sindoor bg-sindoor-light border border-sindoor/30 rounded-xl px-4 py-3 font-semibold"></p>
 
       <button id="saveProfileBtn"
-              class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-3 rounded-xl transition disabled:opacity-60">
-        Save and continue
-      </button>
+              class="w-full bg-saffron hover:bg-saffron-deep text-ink text-lg font-extrabold py-4 rounded-2xl shadow-lift transition disabled:opacity-50"
+              data-i18n="profile.save">Save and continue</button>
       <div class="flex justify-between">
-        <button id="profileBackBtn" type="button" class="text-xs text-slate-400 hover:text-white underline py-1">Cancel</button>
-        <button id="profileSignOutBtn" type="button" class="text-xs text-slate-400 hover:text-white underline py-1">Sign out</button>
+        <button id="profileBackBtn" type="button" class="text-sm text-ink-soft hover:text-ink underline py-1" data-i18n="common.cancel">Cancel</button>
+        <button id="profileSignOutBtn" type="button" class="text-sm text-ink-soft hover:text-ink underline py-1" data-i18n="common.signOut">Sign out</button>
       </div>
     </section>
 
     <!-- ============ READY (returning client) ============ -->
-    <section id="step-ready" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+    <section id="step-ready" class="hidden bg-white border border-line rounded-3xl p-6 shadow-card space-y-5">
       <div>
-        <h2 id="readyGreeting" class="text-base font-bold text-slate-100"></h2>
-        <p id="readySummary" class="text-xs text-slate-400 mt-1 leading-relaxed"></p>
+        <h2 id="readyGreeting" class="text-2xl font-extrabold leading-tight"></h2>
+        <p id="readySummary" class="text-sm text-ink-soft mt-2 leading-relaxed"></p>
       </div>
+
+      <ol class="space-y-2.5">
+        <li class="flex items-center gap-3 bg-page rounded-2xl px-4 py-3">
+          <span class="w-8 h-8 rounded-full bg-saffron text-ink font-extrabold flex items-center justify-center shrink-0">1</span>
+          <span class="text-sm font-semibold" data-i18n="ready.step1">Right hand, ten photos</span>
+        </li>
+        <li class="flex items-center gap-3 bg-page rounded-2xl px-4 py-3">
+          <span class="w-8 h-8 rounded-full bg-saffron text-ink font-extrabold flex items-center justify-center shrink-0">2</span>
+          <span class="text-sm font-semibold" data-i18n="ready.step2">Left hand, ten photos</span>
+        </li>
+        <li class="flex items-center gap-3 bg-page rounded-2xl px-4 py-3">
+          <span class="w-8 h-8 rounded-full bg-saffron text-ink font-extrabold flex items-center justify-center shrink-0">3</span>
+          <span class="text-sm font-semibold" data-i18n="ready.step3">We call you to arrange your reading</span>
+        </li>
+      </ol>
 
       <button id="startBtn"
-              class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-3 rounded-xl transition disabled:opacity-60">
-        Start photo capture
-      </button>
+              class="w-full bg-saffron hover:bg-saffron-deep text-ink text-lg font-extrabold py-4 rounded-2xl shadow-lift transition disabled:opacity-50"
+              data-i18n="ready.start">Start taking photos</button>
       <div class="flex justify-between">
-        <button id="editProfileBtn" type="button" class="text-xs text-slate-400 hover:text-white underline py-1">Edit my details</button>
-        <button id="signOutBtn" type="button" class="text-xs text-slate-400 hover:text-white underline py-1">Sign out</button>
+        <button id="editProfileBtn" type="button" class="text-sm text-ink-soft hover:text-ink underline py-1" data-i18n="ready.edit">Edit my details</button>
+        <button id="signOutBtn" type="button" class="text-sm text-ink-soft hover:text-ink underline py-1" data-i18n="common.signOut">Sign out</button>
       </div>
-      <p class="text-[11px] text-slate-500 text-center">Your photos are stored privately and used only for your reading.</p>
       <button id="deleteAccountBtn" type="button"
-              class="w-full text-[11px] text-slate-600 hover:text-red-400 underline pt-2">Delete my account</button>
+              class="w-full text-xs text-ink-faint hover:text-sindoor underline pt-1" data-i18n="ready.delete">Delete my account</button>
     </section>
 
-    <!-- ============ STEP 2: CAPTURE ============ -->
-    <section id="step-camera" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl">
+    <!-- ============ CAPTURE ============ -->
+    <section id="step-camera" class="hidden bg-white border border-line rounded-3xl p-4 shadow-card">
 
-      <div class="w-full flex items-start justify-between gap-2 mb-3">
-        <div class="w-8 shrink-0"></div>
+      <div class="flex items-start justify-between gap-2 mb-2">
+        <div class="w-9 shrink-0"></div>
         <div class="text-center flex-1 min-w-0">
-          <span id="stepCounter" class="text-[11px] bg-amber-500/20 text-amber-400 px-2.5 py-1 rounded-full font-mono">Photo 1 of 10</span>
-          <h2 id="stepTitle" class="font-bold text-base mt-2 text-slate-100">Full open palm</h2>
-          <p id="stepGuide" class="text-xs text-slate-400 mt-0.5">Tap ? to see the reference pose.</p>
+          <span id="stepCounter" class="inline-block text-xs bg-saffron-light text-ink px-3 py-1 rounded-full font-bold"></span>
+          <h2 id="stepTitle" class="font-extrabold text-lg mt-1.5 leading-snug"></h2>
+          <p id="stepGuide" class="text-xs text-ink-soft mt-0.5" data-i18n="cam.tapHelp">Tap ? to see the reference pose.</p>
         </div>
         <button id="helpBtn" type="button" aria-label="Show reference pose"
-                class="w-8 h-8 shrink-0 bg-amber-500 rounded-full text-slate-950 font-bold hover:bg-amber-400 transition flex items-center justify-center">?</button>
+                class="w-9 h-9 shrink-0 bg-saffron rounded-full text-ink font-extrabold text-lg hover:bg-saffron-deep transition flex items-center justify-center shadow-lift">?</button>
       </div>
 
-      <!-- progress dots -->
-      <div id="progressDots" class="flex justify-center gap-1.5 mb-3"></div>
+      <!-- Progress: two hands that fill from the wrist up. -->
+      <div id="handProgress" class="flex items-center justify-center gap-6 mb-3"></div>
 
-      <!-- Preview frame. Everything captured is exactly what shows inside this box. -->
-      <div id="previewFrame" class="relative w-full aspect-[3/4] bg-black rounded-xl overflow-hidden border border-slate-800">
+      <div id="previewFrame"
+           class="relative aspect-[3/4] mx-auto bg-black rounded-2xl overflow-hidden border-4 border-line"
+           style="width: min(100%, calc(50dvh * 0.75));">
         <video id="video" autoplay playsinline webkit-playsinline muted
                class="absolute inset-0 w-full h-full object-cover z-0"></video>
 
-        <img id="reviewImage" alt="Captured photo" class="hidden absolute inset-0 w-full h-full object-cover z-10">
+        <svg id="handGuide" viewBox="0 0 300 400" preserveAspectRatio="none" aria-hidden="true"
+             class="hidden absolute inset-0 w-full h-full z-[5] pointer-events-none">
+          <path id="handGuidePath" d="" fill="rgba(240,162,46,0.12)" stroke="#F0A22E"
+                stroke-width="2.5" stroke-dasharray="9 6" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+        </svg>
+        <p id="handGuideHint"
+           class="hidden absolute bottom-3 left-3 right-3 z-[6] text-center text-xs font-semibold text-white drop-shadow pointer-events-none"></p>
+
+        <img id="reviewImage" alt="" class="hidden absolute inset-0 w-full h-full object-cover z-10">
 
         <div id="fingerprintOverlay"
              class="hidden absolute inset-0 flex flex-col items-center justify-center bg-black/35 text-center p-6 z-20 pointer-events-none">
-          <div class="w-16 h-16 border-2 border-amber-400 rounded-full mb-4 animate-pulse"></div>
-          <p class="text-amber-400 font-bold text-base">Centre your <span id="fingerName"></span> here</p>
-          <p class="text-slate-200 text-xs mt-2">Hold still and keep the ridges brightly lit.</p>
+          <div class="w-24 h-24 border-4 border-saffron rounded-full mb-4 animate-pulse"></div>
+          <p class="text-white font-extrabold text-base" data-i18n-dyn="fingerLine"></p>
+          <p class="text-white/90 text-xs mt-2" data-i18n="cam.holdStill">Hold still and keep the ridges brightly lit.</p>
         </div>
 
         <div id="cameraOff"
-             class="hidden absolute inset-0 flex flex-col items-center justify-center text-center p-6 z-20 bg-slate-950">
-          <p class="text-slate-300 text-sm font-semibold">Using your phone's camera app</p>
-          <p class="text-slate-500 text-xs mt-2">Live preview isn't available here, so each photo opens the camera directly.</p>
+             class="hidden absolute inset-0 flex flex-col items-center justify-center text-center p-6 z-20 bg-ink">
+          <p class="text-white text-base font-bold" data-i18n="cam.usingApp">Using your phone's camera app</p>
+          <p class="text-white/70 text-xs mt-2" data-i18n="cam.usingAppSub">Live preview isn't available here, so each photo opens the camera directly.</p>
         </div>
 
-        <div id="aiWarning"
-             class="hidden absolute top-3 left-3 right-3 z-30 text-white text-xs font-semibold px-3 py-2 rounded-lg shadow-lg text-center">
-        </div>
+        <div id="aiWarning" role="status" aria-live="polite"
+             class="hidden absolute top-3 left-3 right-3 z-30 text-white text-sm font-bold px-3 py-2.5 rounded-xl shadow-lg text-center"></div>
       </div>
 
-      <!-- Live-camera controls -->
-      <div id="liveControls" class="flex items-center justify-between w-full mt-4 px-2">
-        <button id="backBtn" type="button" class="text-xs text-slate-400 hover:text-white underline disabled:opacity-40 w-20 text-left">Previous</button>
+      <div id="liveControls" class="flex items-center justify-between w-full mt-3 px-2">
+        <button id="backBtn" type="button" class="text-sm text-ink-soft hover:text-ink underline disabled:opacity-40 w-20 text-left" data-i18n="cam.prev">Previous</button>
         <button id="snapBtn" type="button" aria-label="Take photo"
-                class="w-16 h-16 rounded-full border-4 border-amber-400 flex items-center justify-center p-1 active:scale-95 transition disabled:opacity-40">
-          <div class="w-full h-full bg-amber-400 rounded-full"></div>
+                class="w-[76px] h-[76px] rounded-full border-4 border-saffron bg-white flex items-center justify-center p-1.5 active:scale-95 transition disabled:opacity-40 shadow-lift">
+          <div class="w-full h-full bg-saffron rounded-full"></div>
         </button>
-        <button id="retakeBtn" type="button" class="text-xs text-slate-400 hover:text-white underline disabled:opacity-40 w-20 text-right">Retake</button>
+        <button id="retakeBtn" type="button" class="text-sm text-ink-soft hover:text-ink underline disabled:opacity-40 w-20 text-right" data-i18n="cam.retake">Retake</button>
       </div>
 
-      <!-- Native-camera fallback controls -->
-      <div id="fileControls" class="hidden mt-4 space-y-2">
+      <div id="fileControls" class="hidden mt-3 space-y-2">
         <button id="filePickBtn" type="button"
-                class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-3 rounded-xl transition disabled:opacity-60">
-          Take photo
-        </button>
+                class="w-full bg-saffron hover:bg-saffron-deep text-ink text-lg font-extrabold py-4 rounded-2xl shadow-lift transition disabled:opacity-50"
+                data-i18n="cam.takePhoto">Take photo</button>
         <button id="galleryBtn" type="button"
-                class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm py-2.5 rounded-xl transition disabled:opacity-60">
-          Choose a photo instead
-        </button>
-        <button id="fileBackBtn" type="button" class="w-full text-xs text-slate-400 hover:text-white underline py-1 disabled:opacity-40">Previous photo</button>
+                class="w-full bg-page hover:bg-line text-ink text-sm font-semibold py-3 rounded-2xl transition disabled:opacity-50"
+                data-i18n="cam.choosePhoto">Choose a photo instead</button>
+        <button id="fileBackBtn" type="button" class="w-full text-sm text-ink-soft hover:text-ink underline py-1 disabled:opacity-40" data-i18n="cam.prevPhoto">Previous photo</button>
       </div>
 
-      <!-- Two inputs: one asks the phone for the camera, one for any image.
-           Some in-app browsers ignore "capture", so the second is the escape hatch. -->
       <input id="fileInput"    type="file" accept="image/*" capture="environment" class="hidden">
       <input id="galleryInput" type="file" accept="image/*" class="hidden">
 
-      <p id="captureStatus" class="text-[11px] text-slate-500 text-center mt-3"></p>
+      <p id="captureStatus" class="text-xs text-ink-faint text-center mt-2 min-h-[1rem]"></p>
     </section>
 
-    <!-- ============ STEP 3: UPLOADING ============ -->
-    <section id="step-uploading" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center shadow-xl space-y-4">
-      <div class="w-10 h-10 border-4 border-slate-700 border-t-amber-400 rounded-full mx-auto spin"></div>
-      <h2 class="text-base font-bold text-slate-100">Uploading your photos</h2>
-      <p id="uploadProgress" class="text-xs text-slate-400">Preparing…</p>
-      <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
-        <div id="uploadBar" class="bg-amber-400 h-full w-0 transition-all duration-300"></div>
+    <!-- ============ REVIEW ============ -->
+    <section id="step-review" class="hidden bg-white border border-line rounded-3xl p-5 shadow-card space-y-4">
+      <div>
+        <h2 class="text-2xl font-extrabold leading-tight" data-i18n="review.title">Check your photos</h2>
+        <p class="text-sm text-ink-soft mt-1" data-i18n="review.blurb">Tap any photo to take it again.</p>
       </div>
-      <p class="text-[11px] text-slate-500">Keep this screen open until it finishes.</p>
+      <div id="reviewGrid" class="space-y-4"></div>
+      <button id="submitBtn"
+              class="w-full bg-saffron hover:bg-saffron-deep text-ink text-lg font-extrabold py-4 rounded-2xl shadow-lift transition disabled:opacity-50"
+              data-i18n="review.send">Send my photos</button>
     </section>
 
-    <!-- ============ STEP 4: DONE ============ -->
-    <section id="step-complete" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center shadow-xl space-y-3">
-      <div class="w-12 h-12 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto text-xl font-bold">✓</div>
-      <h2 class="text-lg font-bold text-slate-100">All ten photos received</h2>
-      <p class="text-xs text-slate-400">We'll review your palm and message you on WhatsApp to arrange the call.</p>
-      <p id="completeRef" class="text-[11px] text-slate-600 font-mono pt-2"></p>
-      <div class="flex justify-between pt-2">
-        <button id="anotherReadingBtn" type="button" class="text-xs text-slate-400 hover:text-white underline py-1">Start another reading</button>
-        <button id="completeSignOutBtn" type="button" class="text-xs text-slate-400 hover:text-white underline py-1">Sign out</button>
+    <!-- ============ UPLOADING ============ -->
+    <section id="step-uploading" class="hidden bg-white border border-line rounded-3xl p-8 text-center shadow-card space-y-4">
+      <div class="w-12 h-12 border-4 border-line border-t-saffron rounded-full mx-auto spin"></div>
+      <h2 class="text-xl font-extrabold" data-i18n="upload.title">Sending your photos</h2>
+      <p id="uploadProgress" class="text-sm text-ink-soft"></p>
+      <div class="w-full bg-line rounded-full h-2.5 overflow-hidden">
+        <div id="uploadBar" class="bg-mehndi h-full w-0 transition-all duration-300"></div>
+      </div>
+      <p class="text-xs text-ink-faint" data-i18n="upload.keepOpen">Keep this screen open until it finishes.</p>
+    </section>
+
+    <!-- ============ DONE ============ -->
+    <section id="step-complete" class="hidden bg-white border border-line rounded-3xl p-8 text-center shadow-card space-y-4">
+      <div class="w-16 h-16 bg-mehndi-light text-mehndi rounded-full flex items-center justify-center mx-auto text-3xl font-extrabold">✓</div>
+      <h2 class="text-2xl font-extrabold leading-tight" data-i18n="done.title">All twenty photos received</h2>
+      <p class="text-sm text-ink-soft leading-relaxed" data-i18n="done.body">We'll look at your palms and message you on WhatsApp to arrange the call.</p>
+      <p id="completeRef" class="text-xs text-ink-faint"></p>
+      <div class="flex justify-between pt-1">
+        <button id="anotherReadingBtn" type="button" class="text-sm text-ink-soft hover:text-ink underline py-1" data-i18n="done.another">Start another reading</button>
+        <button id="completeSignOutBtn" type="button" class="text-sm text-ink-soft hover:text-ink underline py-1" data-i18n="common.signOut">Sign out</button>
       </div>
     </section>
 
-    <!-- ============ STEP 5: FAILED ============ -->
-    <section id="step-failed" class="hidden bg-slate-900 border border-red-900/60 rounded-2xl p-8 text-center shadow-xl space-y-4">
-      <div class="w-12 h-12 bg-red-500/20 text-red-400 rounded-full flex items-center justify-center mx-auto text-xl font-bold">!</div>
-      <h2 class="text-lg font-bold text-slate-100">Some photos didn't upload</h2>
-      <p id="failedDetail" class="text-xs text-slate-400"></p>
-      <button id="retryUploadBtn" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-3 rounded-xl transition">
-        Try uploading again
-      </button>
+    <!-- ============ FAILED ============ -->
+    <section id="step-failed" class="hidden bg-white border-2 border-sindoor rounded-3xl p-8 text-center shadow-card space-y-4">
+      <div class="w-16 h-16 bg-sindoor-light text-sindoor rounded-full flex items-center justify-center mx-auto text-3xl font-extrabold">!</div>
+      <h2 class="text-2xl font-extrabold leading-tight" data-i18n="fail.title">Some photos didn't send</h2>
+      <p id="failedDetail" class="text-sm text-ink-soft"></p>
+      <button id="retryUploadBtn"
+              class="w-full bg-saffron hover:bg-saffron-deep text-ink text-lg font-extrabold py-4 rounded-2xl shadow-lift transition"
+              data-i18n="fail.retry">Try again</button>
     </section>
   </div>
 
-  <!-- ============ DELETE ACCOUNT CONFIRMATION ============ -->
-  <div id="deleteModal" class="hidden fixed inset-0 z-50 bg-slate-950/92 backdrop-blur-sm flex items-center justify-center p-4"
+  <!-- ============ DELETE CONFIRMATION ============ -->
+  <div id="deleteModal" class="hidden fixed inset-0 z-50 bg-ink/60 backdrop-blur-sm flex items-center justify-center p-4"
        role="dialog" aria-modal="true" aria-labelledby="deleteTitle">
-    <div class="bg-slate-900 border border-red-900/60 rounded-2xl p-5 w-full max-w-sm shadow-2xl space-y-4">
-      <h3 id="deleteTitle" class="text-base font-bold text-slate-100">Delete your account?</h3>
-      <p class="text-sm text-slate-400 leading-relaxed">
-        This removes your saved details and every reading you have submitted. It cannot be undone,
-        and you will have to start again from scratch if you come back.
-      </p>
-      <p id="deleteError" class="hidden text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg p-2.5"></p>
+    <div class="bg-white border-2 border-sindoor rounded-3xl p-6 w-full max-w-sm shadow-card space-y-4">
+      <h3 id="deleteTitle" class="text-xl font-extrabold" data-i18n="del.title">Delete your account?</h3>
+      <p class="text-sm text-ink-soft leading-relaxed" data-i18n="del.body">This removes your saved details and every reading you have submitted. It cannot be undone.</p>
+      <p id="deleteError" class="hidden text-sm text-sindoor bg-sindoor-light border border-sindoor/30 rounded-xl px-4 py-3 font-semibold"></p>
       <button id="confirmDeleteBtn" type="button"
-              class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-xl transition disabled:opacity-60">
-        Yes, delete everything
-      </button>
+              class="w-full bg-sindoor hover:bg-sindoor/90 text-white text-lg font-extrabold py-4 rounded-2xl transition disabled:opacity-50"
+              data-i18n="del.yes">Yes, delete everything</button>
       <button id="cancelDeleteBtn" type="button"
-              class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 py-2.5 rounded-xl transition">
-        Keep my account
-      </button>
+              class="w-full bg-page hover:bg-line text-ink font-semibold py-3.5 rounded-2xl transition"
+              data-i18n="del.no">Keep my account</button>
     </div>
   </div>
 
-  <!-- ============ HELP MODAL (fixed, so it always covers the viewport) ============ -->
-  <div id="helpModal" class="hidden fixed inset-0 z-50 bg-slate-950/92 backdrop-blur-sm flex items-center justify-center p-4"
+  <!-- ============ HELP ============ -->
+  <div id="helpModal" class="hidden fixed inset-0 z-50 bg-ink/60 backdrop-blur-sm flex items-center justify-center p-4"
        role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-    <div class="bg-slate-900 border border-slate-700 rounded-2xl p-5 w-full max-w-sm shadow-2xl space-y-3 text-center max-h-[88dvh] overflow-y-auto">
-      <h3 id="modalTitle" class="text-base font-bold text-amber-400 border-b border-slate-700 pb-2">Reference</h3>
+    <div class="bg-white border border-line rounded-3xl p-6 w-full max-w-sm shadow-card space-y-4 text-center max-h-[88dvh] overflow-y-auto">
+      <h3 id="modalTitle" class="text-xl font-extrabold"></h3>
       <img id="modalRefImage" src="" alt="Reference hand position"
-           class="w-44 h-auto mx-auto rounded-lg border border-slate-600 hidden">
-      <p id="modalRefText" class="text-sm text-slate-300"></p>
-      <ul class="text-xs text-slate-400 space-y-1.5 text-left bg-slate-950 p-3 rounded-lg">
-        <li>Match the hand angle in the picture.</li>
-        <li>Tap the preview once to focus on the lines.</li>
-        <li>Stand near a window or a bright lamp.</li>
-        <li>Fill the frame with your hand.</li>
+           class="w-48 h-auto mx-auto rounded-2xl border-2 border-line hidden">
+      <p id="modalRefText" class="text-base text-ink-soft"></p>
+      <ul class="text-sm text-ink space-y-2 text-left bg-page p-4 rounded-2xl">
+        <li class="flex gap-2"><span class="text-saffron font-extrabold">1</span><span data-i18n="help.tip1">Match the hand position in the picture.</span></li>
+        <li class="flex gap-2"><span class="text-saffron font-extrabold">2</span><span data-i18n="help.tip2">Tap the preview once to focus.</span></li>
+        <li class="flex gap-2"><span class="text-saffron font-extrabold">3</span><span data-i18n="help.tip3">Stand near a window or a bright lamp.</span></li>
+        <li class="flex gap-2"><span class="text-saffron font-extrabold">4</span><span data-i18n="help.tip4">Fill the frame with your hand.</span></li>
       </ul>
       <button id="closeHelpBtn" type="button"
-              class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-3 rounded-xl transition">Got it</button>
+              class="w-full bg-saffron hover:bg-saffron-deep text-ink text-lg font-extrabold py-4 rounded-2xl shadow-lift transition"
+              data-i18n="help.ok">Got it</button>
+    </div>
+  </div>
+
+  <!-- ============ ROTATE PROMPT ============ -->
+  <div id="rotateOverlay" class="fixed inset-0 z-[60] bg-page items-center justify-center p-6 text-center">
+    <div>
+      <div class="text-5xl mb-3">📱</div>
+      <p class="text-lg font-extrabold" data-i18n="rotate">Please hold your phone upright</p>
     </div>
   </div>
 
@@ -303,95 +380,365 @@
   "use strict";
 
   /* ==========================================================
-     CONFIG — replace these three values
+     CONFIG
      ========================================================== */
   var GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby8KUg3s44uwrhlpNVJs8GdTg7eu9anyKuX42oWgH2nwyQ3Py7NiSlg_7hfQlKcFeNDFQ/exec";
   var SUPABASE_URL      = "https://simfpaytvkqgknrrhvoj.supabase.co";
   var SUPABASE_ANON_KEY = "sb_publishable_rfqgEkkZhzNEWKCxtPNZog_no_8KR5F";
 
-  var APP_VERSION   = "2026-09-05-h";   // shown on the sign-in screen
-  var MAX_EDGE      = 1400;  // longest side of a stored photo, in px
+  var APP_VERSION   = "2026-09-05-p";
+  var MAX_EDGE      = 1400;
   var JPEG_QUALITY  = 0.82;
-  // The AI only needs enough detail to judge sharpness. Sending a small copy
-  // for the check instead of the full photo is the biggest speed win there is.
   var CHECK_EDGE    = 900;
   var CHECK_QUALITY = 0.6;
   var UPLOAD_TRIES  = 3;
-  var CAPTURE_RATIO = 3 / 4;  // must match the aspect-[3/4] preview frame
+  var CAPTURE_RATIO = 3 / 4;
 
   /* ==========================================================
-     STEPS
+     LANGUAGE
      ========================================================== */
-  var CAPTURE_STEPS = [
-    { id: "full_open",       title: "Full open palm",      img: "step1-open.jpg",  finger: "",
+  var I18N = {
+    en: {
+      "tagline": "Both hands, twenty photos, checked as you go.",
+      "auth.createTitle": "Create your account",
+      "auth.createBlurb": "Use your mobile number and pick a password. You only do this once.",
+      "auth.signinTitle": "Sign in",
+      "auth.signinBlurb": "Sign in with the mobile number you registered.",
+      "auth.mobile": "Mobile number",
+      "auth.mobilePh": "10 digits",
+      "auth.password": "Password",
+      "auth.pwHintCreate": "Choose any password, at least 6 characters. Remember it for next time.",
+      "auth.pwHintSignin": "The password you chose when you created your account.",
+      "auth.createBtn": "Create account",
+      "auth.signinBtn": "Sign in",
+      "auth.toSignin": "Already have an account? Sign in",
+      "auth.toCreate": "New here? Create an account",
+      "auth.wait": "Please wait…",
+      "err.mobile": "Please enter your 10-digit mobile number.",
+      "err.password": "Password must be at least 6 characters.",
+      "err.exists": "This number already has an account. Enter your password to sign in.",
+      "err.badLogin": "Mobile number or password is incorrect.",
+      "err.session": "Your session expired. Please sign in again.",
+      "err.connect": "Couldn't connect. Check your internet and try again.",
+      "err.name": "Please enter your full name.",
+      "err.dob": "Please enter your date of birth.",
+      "err.place": "Please enter your place.",
+      "err.noMobile": "Your account has no mobile number. Please sign out and sign in again.",
+      "profile.title": "Your details",
+      "profile.blurb": "Entered once. We'll remember them next time.",
+      "profile.name": "Full name",
+      "profile.dob": "Date of birth",
+      "profile.place": "Place",
+      "profile.placePh": "City",
+      "profile.hand": "Dominant hand",
+      "profile.handHelp": "The hand you write with.",
+      "profile.save": "Save and continue",
+      "profile.saving": "Saving…",
+      "hand.right": "Right hand",
+      "hand.left": "Left hand",
+      "hand.Right": "Right",
+      "hand.Left": "Left",
+      "common.cancel": "Cancel",
+      "common.signOut": "Sign out",
+      "ready.hello": "Hello {name}",
+      "ready.dominant": "Dominant hand",
+      "ready.step1": "Right hand, ten photos",
+      "ready.step2": "Left hand, ten photos",
+      "ready.step3": "We call you to arrange your reading",
+      "ready.start": "Start taking photos",
+      "ready.starting": "Starting…",
+      "ready.edit": "Edit my details",
+      "ready.delete": "Delete my account",
+      "cam.counter": "{hand} hand, photo {n} of {total}",
+      "cam.tapHelp": "Tap ? to see the reference pose.",
+      "cam.tapOpen": "Tap Take photo, then confirm the shot.",
+      "cam.holdStill": "Hold still and keep the ridges brightly lit.",
+      "cam.fingerLine": "Centre your {hand} {finger} here",
+      "cam.usingApp": "Using your phone's camera app",
+      "cam.usingAppSub": "Live preview isn't available here, so each photo opens the camera directly.",
+      "cam.prev": "Previous",
+      "cam.retake": "Retake",
+      "cam.takePhoto": "Take photo",
+      "cam.choosePhoto": "Choose a photo instead",
+      "cam.prevPhoto": "Previous photo",
+      "cam.checking": "Checking the photo…",
+      "cam.good": "Looks good",
+      "cam.saved": "Saved. Tap Retake to redo this one.",
+      "cam.noChecker": "Couldn't reach the checker. Tap the shutter to try again.",
+      "cam.unverified": "Saved without the automatic check.",
+      "cam.notReady": "The camera isn't ready yet. Wait a moment and try again.",
+      "cam.retakePlease": "Please retake this photo.",
+      "cam.readFail": "That photo couldn't be read. Please take it again.",
+      "cam.reading": "Reading photo…",
+      "cam.fallback": "Your phone's camera app will be used instead.",
+      "cam.checkedIn": "Checked in {s}s",
+      "help.copyPose": "Copy this position with your {hand} hand.",
+      "help.fingerPose": "Hold your {hand} {finger} flat to the lens so the whole print fills the circle.",
+      "help.tip1": "Match the hand position in the picture.",
+      "help.tip2": "Tap the preview once to focus.",
+      "help.tip3": "Stand near a window or a bright lamp.",
+      "help.tip4": "Fill the frame with your hand.",
+      "help.ok": "Got it",
+      "review.title": "Check your photos",
+      "review.blurb": "Tap any photo to take it again.",
+      "review.send": "Send my photos",
+      "review.handHeading": "{hand} hand",
+      "upload.title": "Sending your photos",
+      "upload.finishing": "Finishing the last few…",
+      "upload.photo": "Photo {n} of {total}",
+      "upload.keepOpen": "Keep this screen open until it finishes.",
+      "done.title": "All twenty photos received",
+      "done.body": "We'll look at your palms and message you on WhatsApp to arrange the call.",
+      "done.ref": "Reference {ref}",
+      "done.another": "Start another reading",
+      "fail.title": "Some photos didn't send",
+      "fail.detail": "{n} of {total} photos failed to send: {list}. The rest were saved.",
+      "fail.retry": "Try again",
+      "del.title": "Delete your account?",
+      "del.body": "This removes your saved details and every reading you have submitted. It cannot be undone.",
+      "del.yes": "Yes, delete everything",
+      "del.no": "Keep my account",
+      "del.deleting": "Deleting…",
+      "del.fail": "Couldn't delete the account. Please try again.",
+      "signout.confirm": "You have photos that haven't been sent. Sign out anyway?",
+      "rotate": "Please hold your phone upright",
+      "finger.thumb": "thumb",
+      "finger.index": "index finger",
+      "finger.middle": "middle finger",
+      "finger.ring": "ring finger",
+      "finger.little": "little finger",
+      "step.full_open": "Full open palm",
+      "step.back_hand": "Back of hand",
+      "step.upper_mounts": "Upper mounts",
+      "step.side_percussion": "Side edge",
+      "step.thumb_venus": "Thumb base",
+      "step.thumb_pad": "Thumb print",
+      "step.index_pad": "Index finger print",
+      "step.middle_pad": "Middle finger print",
+      "step.ring_pad": "Ring finger print",
+      "step.pinky_pad": "Little finger print",
+      "hint.full_open": "Fit your whole hand inside the outline",
+      "hint.back_hand": "Fit the back of your hand inside the outline",
+      "hint.upper_mounts": "Bring the top of your palm into the oval",
+      "hint.side_percussion": "Turn your fist side-on and fit it in the outline",
+      "hint.thumb_venus": "Fit your closed fist inside the outline"
+    },
+    gu: {
+      "tagline": "બંને હાથ, વીસ ફોટા, દરેક ફોટો તરત ચકાસાય છે.",
+      "auth.createTitle": "તમારું એકાઉન્ટ બનાવો",
+      "auth.createBlurb": "તમારો મોબાઇલ નંબર લખો અને પાસવર્ડ પસંદ કરો. આ ફક્ત એક જ વાર કરવાનું છે.",
+      "auth.signinTitle": "સાઇન ઇન કરો",
+      "auth.signinBlurb": "તમે નોંધાવેલા મોબાઇલ નંબરથી સાઇન ઇન કરો.",
+      "auth.mobile": "મોબાઇલ નંબર",
+      "auth.mobilePh": "10 અંક",
+      "auth.password": "પાસવર્ડ",
+      "auth.pwHintCreate": "કોઈપણ પાસવર્ડ પસંદ કરો, ઓછામાં ઓછા 6 અક્ષર. આગલી વખત માટે યાદ રાખો.",
+      "auth.pwHintSignin": "એકાઉન્ટ બનાવતી વખતે પસંદ કરેલો પાસવર્ડ.",
+      "auth.createBtn": "એકાઉન્ટ બનાવો",
+      "auth.signinBtn": "સાઇન ઇન કરો",
+      "auth.toSignin": "પહેલેથી એકાઉન્ટ છે? સાઇન ઇન કરો",
+      "auth.toCreate": "નવા છો? એકાઉન્ટ બનાવો",
+      "auth.wait": "થોડી રાહ જુઓ…",
+      "err.mobile": "કૃપા કરીને 10 અંકનો મોબાઇલ નંબર લખો.",
+      "err.password": "પાસવર્ડ ઓછામાં ઓછા 6 અક્ષરનો હોવો જોઈએ.",
+      "err.exists": "આ નંબરનું એકાઉન્ટ પહેલેથી છે. સાઇન ઇન કરવા પાસવર્ડ લખો.",
+      "err.badLogin": "મોબાઇલ નંબર અથવા પાસવર્ડ ખોટો છે.",
+      "err.session": "તમારું સેશન પૂરું થયું. ફરી સાઇન ઇન કરો.",
+      "err.connect": "જોડાણ થઈ શક્યું નથી. ઇન્ટરનેટ તપાસીને ફરી પ્રયત્ન કરો.",
+      "err.name": "કૃપા કરીને પૂરું નામ લખો.",
+      "err.dob": "કૃપા કરીને જન્મ તારીખ લખો.",
+      "err.place": "કૃપા કરીને ગામ કે શહેર લખો.",
+      "err.noMobile": "તમારા એકાઉન્ટમાં મોબાઇલ નંબર નથી. સાઇન આઉટ કરીને ફરી સાઇન ઇન કરો.",
+      "profile.title": "તમારી વિગતો",
+      "profile.blurb": "એક જ વાર લખો. આગલી વખતે અમે યાદ રાખીશું.",
+      "profile.name": "પૂરું નામ",
+      "profile.dob": "જન્મ તારીખ",
+      "profile.place": "ગામ / શહેર",
+      "profile.placePh": "શહેર",
+      "profile.hand": "મુખ્ય હાથ",
+      "profile.handHelp": "જે હાથે તમે લખો છો.",
+      "profile.save": "સાચવો અને આગળ વધો",
+      "profile.saving": "સાચવી રહ્યા છીએ…",
+      "hand.right": "જમણો હાથ",
+      "hand.left": "ડાબો હાથ",
+      "hand.Right": "જમણો",
+      "hand.Left": "ડાબો",
+      "common.cancel": "રદ કરો",
+      "common.signOut": "સાઇન આઉટ",
+      "ready.hello": "નમસ્તે {name}",
+      "ready.dominant": "મુખ્ય હાથ",
+      "ready.step1": "જમણો હાથ, દસ ફોટા",
+      "ready.step2": "ડાબો હાથ, દસ ફોટા",
+      "ready.step3": "તમારી હસ્તરેખા વાંચવા અમે ફોન કરીશું",
+      "ready.start": "ફોટા લેવાનું શરૂ કરો",
+      "ready.starting": "શરૂ થઈ રહ્યું છે…",
+      "ready.edit": "મારી વિગતો બદલો",
+      "ready.delete": "મારું એકાઉન્ટ કાઢી નાખો",
+      "cam.counter": "{hand} હાથ, ફોટો {n} / {total}",
+      "cam.tapHelp": "નમૂનો જોવા ? દબાવો.",
+      "cam.tapOpen": "'ફોટો લો' દબાવો, પછી ફોટો ચકાસો.",
+      "cam.holdStill": "હાથ સ્થિર રાખો અને પૂરતો પ્રકાશ રાખો.",
+      "cam.fingerLine": "તમારા {hand} હાથનો {finger} અહીં રાખો",
+      "cam.usingApp": "તમારા ફોનનો કૅમેરો વપરાય છે",
+      "cam.usingAppSub": "અહીં લાઇવ પ્રિવ્યૂ નથી, દરેક ફોટા માટે કૅમેરો ખૂલશે.",
+      "cam.prev": "પાછળ",
+      "cam.retake": "ફરી લો",
+      "cam.takePhoto": "ફોટો લો",
+      "cam.choosePhoto": "ફોટો પસંદ કરો",
+      "cam.prevPhoto": "પાછલો ફોટો",
+      "cam.checking": "ફોટો ચકાસી રહ્યા છીએ…",
+      "cam.good": "સરસ, બરાબર છે",
+      "cam.saved": "સાચવ્યો. ફરી લેવા 'ફરી લો' દબાવો.",
+      "cam.noChecker": "ચકાસણી થઈ શકી નથી. ફરી બટન દબાવો.",
+      "cam.unverified": "ચકાસણી વગર સાચવ્યો.",
+      "cam.notReady": "કૅમેરો હજી તૈયાર નથી. થોડી વાર રાહ જુઓ.",
+      "cam.retakePlease": "કૃપા કરીને આ ફોટો ફરી લો.",
+      "cam.readFail": "આ ફોટો વાંચી શકાયો નથી. ફરી લો.",
+      "cam.reading": "ફોટો વાંચી રહ્યા છીએ…",
+      "cam.fallback": "તમારા ફોનનો કૅમેરો વપરાશે.",
+      "cam.checkedIn": "{s} સેકન્ડમાં ચકાસ્યો",
+      "help.copyPose": "તમારા {hand} હાથથી આ સ્થિતિ કરો.",
+      "help.fingerPose": "તમારા {hand} હાથનો {finger} લેન્સ સામે સપાટ રાખો જેથી આખી છાપ ગોળામાં આવે.",
+      "help.tip1": "ચિત્રમાં બતાવ્યા મુજબ હાથ રાખો.",
+      "help.tip2": "ફોકસ માટે સ્ક્રીન પર એક વાર દબાવો.",
+      "help.tip3": "બારી કે તેજ લાઇટ પાસે ઊભા રહો.",
+      "help.tip4": "આખી ફ્રેમમાં હાથ રાખો.",
+      "help.ok": "સમજાયું",
+      "review.title": "તમારા ફોટા તપાસો",
+      "review.blurb": "ફરી લેવા માટે ફોટા પર દબાવો.",
+      "review.send": "મારા ફોટા મોકલો",
+      "review.handHeading": "{hand} હાથ",
+      "upload.title": "તમારા ફોટા મોકલી રહ્યા છીએ",
+      "upload.finishing": "છેલ્લા થોડા પૂરા થઈ રહ્યા છે…",
+      "upload.photo": "ફોટો {n} / {total}",
+      "upload.keepOpen": "પૂરું થાય ત્યાં સુધી આ સ્ક્રીન ખુલ્લી રાખો.",
+      "done.title": "બધા વીસ ફોટા મળી ગયા",
+      "done.body": "અમે તમારી હથેળી જોઈને ફોન માટે WhatsApp પર સંદેશ મોકલીશું.",
+      "done.ref": "સંદર્ભ {ref}",
+      "done.another": "બીજું વાંચન શરૂ કરો",
+      "fail.title": "કેટલાક ફોટા મોકલાયા નથી",
+      "fail.detail": "{total}માંથી {n} ફોટા મોકલાયા નથી: {list}. બાકીના સાચવાયા.",
+      "fail.retry": "ફરી પ્રયત્ન કરો",
+      "del.title": "તમારું એકાઉન્ટ કાઢી નાખવું છે?",
+      "del.body": "આનાથી તમારી સાચવેલી વિગતો અને બધા વાંચન કાઢી નખાશે. આ પાછું લઈ શકાશે નહીં.",
+      "del.yes": "હા, બધું કાઢી નાખો",
+      "del.no": "એકાઉન્ટ રાખો",
+      "del.deleting": "કાઢી રહ્યા છીએ…",
+      "del.fail": "એકાઉન્ટ કાઢી શકાયું નથી. ફરી પ્રયત્ન કરો.",
+      "signout.confirm": "તમારા ફોટા હજી મોકલાયા નથી. તો પણ સાઇન આઉટ કરવું છે?",
+      "rotate": "કૃપા કરીને ફોન સીધો રાખો",
+      "finger.thumb": "અંગૂઠો",
+      "finger.index": "તર્જની આંગળી",
+      "finger.middle": "વચલી આંગળી",
+      "finger.ring": "અનામિકા આંગળી",
+      "finger.little": "ટચલી આંગળી",
+      "step.full_open": "ખુલ્લી હથેળી",
+      "step.back_hand": "હાથની પાછળની બાજુ",
+      "step.upper_mounts": "હથેળીનો ઉપરનો ભાગ",
+      "step.side_percussion": "હાથની બાજુ",
+      "step.thumb_venus": "અંગૂઠાનું મૂળ",
+      "step.thumb_pad": "અંગૂઠાની છાપ",
+      "step.index_pad": "તર્જની આંગળીની છાપ",
+      "step.middle_pad": "વચલી આંગળીની છાપ",
+      "step.ring_pad": "અનામિકા આંગળીની છાપ",
+      "step.pinky_pad": "ટચલી આંગળીની છાપ",
+      "hint.full_open": "આખો હાથ લીટીની અંદર રાખો",
+      "hint.back_hand": "હાથની પાછળની બાજુ લીટીની અંદર રાખો",
+      "hint.upper_mounts": "હથેળીનો ઉપરનો ભાગ ગોળામાં લાવો",
+      "hint.side_percussion": "મુઠ્ઠી બાજુથી બતાવો અને લીટીની અંદર રાખો",
+      "hint.thumb_venus": "બંધ મુઠ્ઠી લીટીની અંદર રાખો"
+    }
+  };
+
+  var lang = "en";
+  try { lang = localStorage.getItem("palm_lang") === "gu" ? "gu" : "en"; } catch (e) {}
+
+  function t(key, vars) {
+    var s = (I18N[lang] && I18N[lang][key]) || I18N.en[key] || key;
+    if (vars) Object.keys(vars).forEach(function (k) { s = s.split("{" + k + "}").join(vars[k]); });
+    return s;
+  }
+
+  function applyLang() {
+    document.documentElement.lang = lang;
+    document.querySelectorAll("[data-i18n]").forEach(function (el) {
+      el.textContent = t(el.getAttribute("data-i18n"));
+    });
+    document.querySelectorAll("[data-i18n-ph]").forEach(function (el) {
+      el.setAttribute("placeholder", t(el.getAttribute("data-i18n-ph")));
+    });
+    $("langBtn").textContent = lang === "en" ? "ગુજરાતી" : "English";
+    // Screens that build their own text
+    refreshAuthMode();
+    if (profile && !$("step-ready").classList.contains("hidden")) showReady();
+    if (!$("step-camera").classList.contains("hidden")) updateStepUI();
+    if (!$("step-review").classList.contains("hidden")) renderReview();
+  }
+
+  /* ==========================================================
+     STEPS (ten per hand, both hands)
+     ========================================================== */
+  var BASE_STEPS = [
+    { id: "full_open",       img: "step1-open.jpg",  finger: "",
       expect: "the palm facing the camera with fingers extended",
       focus:  "the whole palm surface, from the wrist crease up to the base of the fingers" },
-    { id: "back_hand",       title: "Back of hand",        img: "step2-back.jpg",  finger: "",
+    { id: "back_hand",       img: "step2-back.jpg",  finger: "",
       expect: "the back of the hand facing the camera",
       focus:  "the back of the hand, knuckles and nails" },
-    { id: "upper_mounts",    title: "Upper mounts",        img: "step3-upper.jpg", finger: "",
+    { id: "upper_mounts",    img: "step3-upper.jpg", finger: "",
       expect: "the palm facing the camera, framed close on the top part of the palm",
       focus:  "the band of palm directly below the four fingers" },
-    { id: "side_percussion", title: "Side edge",           img: "step4-side.jpg",  finger: "",
+    { id: "side_percussion", img: "step4-side.jpg",  finger: "",
       expect: "the hand curled into a loose fist, seen from the side",
       focus:  "the fleshy mound at the base of the thumb and the side of the hand" },
-    { id: "thumb_venus",     title: "Thumb base",          img: "step5-thumb.jpg", finger: "",
+    { id: "thumb_venus",     img: "step5-thumb.jpg", finger: "",
       expect: "a closed fist facing the camera with the wrist visible",
       focus:  "the curled fingers and the creases at the base of the thumb" },
-    { id: "thumb_pad",       title: "Thumb print",         img: "", finger: "thumb",
-      expect: "a close-up of one fingertip pad",
-      focus:  "the ridge pattern on the fingertip" },
-    { id: "index_pad",       title: "Index finger print",  img: "", finger: "index finger",
-      expect: "a close-up of one fingertip pad",
-      focus:  "the ridge pattern on the fingertip" },
-    { id: "middle_pad",      title: "Middle finger print", img: "", finger: "middle finger",
-      expect: "a close-up of one fingertip pad",
-      focus:  "the ridge pattern on the fingertip" },
-    { id: "ring_pad",        title: "Ring finger print",   img: "", finger: "ring finger",
-      expect: "a close-up of one fingertip pad",
-      focus:  "the ridge pattern on the fingertip" },
-    { id: "pinky_pad",       title: "Little finger print", img: "", finger: "little finger",
-      expect: "a close-up of one fingertip pad",
-      focus:  "the ridge pattern on the fingertip" }
+    { id: "thumb_pad",  img: "", finger: "thumb",  expect: "a close-up of one fingertip pad", focus: "the ridge pattern on the fingertip" },
+    { id: "index_pad",  img: "", finger: "index",  expect: "a close-up of one fingertip pad", focus: "the ridge pattern on the fingertip" },
+    { id: "middle_pad", img: "", finger: "middle", expect: "a close-up of one fingertip pad", focus: "the ridge pattern on the fingertip" },
+    { id: "ring_pad",   img: "", finger: "ring",   expect: "a close-up of one fingertip pad", focus: "the ridge pattern on the fingertip" },
+    { id: "pinky_pad",  img: "", finger: "little", expect: "a close-up of one fingertip pad", focus: "the ridge pattern on the fingertip" }
   ];
 
-  /* The five reference photos were shot of a RIGHT hand.
-     Mirror them when the client is having their left hand read. */
-  var REFERENCE_HAND = "Right";
+  var GUIDE_PATHS = {
+    "full_open": "M79.6,7.0 L69.4,7.0 L60.0,14.1 L57.7,16.4 L49.2,26.6 L49.2,28.1 L43.7,34.4 L43.7,35.9 L37.5,43.7 L37.5,45.3 L34.4,49.2 L34.4,50.8 L32.0,53.9 L32.0,55.5 L29.7,58.6 L29.7,60.2 L28.1,62.5 L28.1,65.6 L25.8,68.7 L25.8,75.0 L24.2,77.3 L24.2,142.2 L25.8,144.5 L25.8,162.5 L27.3,164.1 L27.3,178.1 L28.1,180.5 L28.1,203.9 L29.7,206.2 L29.7,235.2 L28.1,237.5 L28.1,246.1 L26.6,248.4 L26.6,259.4 L25.0,261.7 L25.0,270.3 L23.4,272.7 L23.4,281.2 L21.9,283.6 L21.9,289.8 L20.3,292.2 L20.3,296.9 L18.7,299.2 L18.7,305.5 L17.2,307.8 L17.2,314.1 L15.6,316.4 L15.6,323.4 L14.1,325.8 L14.1,335.9 L12.5,338.3 L12.5,357.0 L14.1,359.4 L14.1,365.6 L12.5,368.0 L12.5,394.5 L14.1,396.9 L165.6,396.9 L167.2,394.5 L172.7,394.5 L175.0,392.2 L182.0,392.2 L184.4,389.8 L189.8,389.8 L192.2,387.5 L196.1,387.5 L198.4,385.2 L201.6,385.2 L203.9,382.8 L207.0,382.8 L209.4,380.5 L212.5,380.5 L214.8,378.1 L218.0,378.1 L220.3,375.8 L221.9,375.8 L224.2,373.4 L225.8,373.4 L228.1,371.1 L228.1,364.1 L226.6,361.7 L226.6,346.1 L228.1,343.7 L228.1,321.9 L229.7,319.5 L229.7,297.7 L231.2,295.3 L231.2,265.6 L229.7,263.3 L229.7,236.7 L231.2,234.4 L231.2,217.2 L232.8,214.8 L232.8,200.8 L234.4,198.4 L234.4,178.1 L235.9,175.8 L235.9,170.3 L237.5,168.0 L237.5,163.3 L239.1,160.9 L239.1,156.2 L240.6,153.9 L240.6,146.9 L242.2,144.5 L242.2,133.6 L240.6,131.2 L240.6,120.3 L239.1,118.0 L239.1,113.3 L237.5,110.9 L237.5,108.6 L235.9,106.2 L235.9,103.9 L233.6,101.6 L233.6,100.0 L228.1,94.5 L227.3,93.0 L215.6,93.0 L214.1,94.5 L212.5,94.5 L210.9,92.2 L210.9,86.7 L209.4,84.4 L209.4,81.2 L207.8,78.9 L207.8,75.8 L206.2,73.4 L206.2,70.3 L204.7,68.0 L204.7,64.8 L203.1,62.5 L203.1,60.9 L201.6,58.6 L201.6,57.0 L200.0,54.7 L200.0,53.1 L198.4,50.8 L198.4,49.2 L196.9,46.9 L196.9,45.3 L195.3,43.0 L195.3,41.4 L193.7,39.1 L193.7,37.5 L192.2,35.2 L192.2,33.6 L190.6,31.2 L190.6,29.7 L189.1,27.3 L189.1,25.8 L187.5,23.4 L187.5,21.9 L185.9,19.5 L185.9,18.0 L182.8,14.8 L182.8,13.3 L178.9,9.4 L177.3,9.4 L175.0,7.0 Z",
+    "back_hand": "M148.4,42.2 L127.3,42.2 L125.0,44.5 L116.4,44.5 L114.1,46.9 L107.0,46.9 L104.7,49.2 L100.8,49.2 L98.4,51.6 L95.3,51.6 L93.0,53.9 L90.6,53.9 L88.3,56.2 L86.7,56.2 L83.6,59.4 L82.0,59.4 L76.6,64.8 L75.0,64.8 L70.3,69.5 L70.3,71.1 L66.4,75.0 L66.4,76.6 L62.5,80.5 L62.5,82.0 L59.4,85.2 L59.4,86.7 L57.0,89.1 L57.0,90.6 L54.7,93.0 L54.7,94.5 L52.3,96.9 L52.3,98.4 L50.0,100.8 L50.0,102.3 L47.7,104.7 L47.7,107.0 L45.3,109.4 L45.3,112.5 L43.0,114.8 L43.0,118.0 L40.6,120.3 L40.6,124.2 L38.3,126.6 L38.3,132.8 L36.7,135.2 L36.7,183.6 L38.3,185.9 L38.3,207.0 L36.7,209.4 L36.7,220.3 L35.2,222.7 L35.2,232.8 L33.6,235.2 L33.6,245.3 L32.0,247.7 L32.0,257.0 L30.5,259.4 L30.5,269.5 L28.9,271.9 L28.9,285.2 L27.3,287.5 L27.3,303.9 L28.9,306.2 L28.9,327.3 L30.5,329.7 L30.5,334.4 L32.0,336.7 L32.0,339.1 L33.6,341.4 L33.6,343.0 L38.3,347.7 L38.3,349.2 L41.4,352.3 L43.0,352.3 L45.3,354.7 L46.9,354.7 L49.2,357.0 L52.3,357.0 L54.7,359.4 L59.4,359.4 L61.7,361.7 L70.3,361.7 L72.7,364.1 L84.4,364.1 L86.7,366.4 L149.2,366.4 L151.6,364.1 L156.2,364.1 L158.6,361.7 L161.7,361.7 L164.1,359.4 L165.6,359.4 L168.0,357.0 L169.5,357.0 L172.7,353.9 L172.7,352.3 L177.3,347.7 L177.3,346.1 L180.5,343.0 L180.5,341.4 L182.8,339.1 L182.8,336.7 L185.2,334.4 L185.2,331.2 L187.5,328.9 L187.5,325.8 L189.8,323.4 L189.8,318.0 L192.2,315.6 L192.2,309.4 L194.5,307.0 L194.5,300.8 L196.9,298.4 L196.9,292.2 L199.2,289.8 L199.2,284.4 L201.6,282.0 L201.6,277.3 L203.9,275.0 L203.9,270.3 L206.2,268.0 L206.2,263.3 L208.6,260.9 L208.6,257.0 L210.9,254.7 L210.9,250.8 L213.3,248.4 L213.3,245.3 L215.6,243.0 L215.6,240.6 L218.0,238.3 L218.0,236.7 L220.3,234.4 L220.3,232.8 L222.7,230.5 L222.7,228.9 L225.0,226.6 L225.0,225.0 L227.3,222.7 L227.3,221.1 L229.7,218.7 L229.7,217.2 L232.0,214.8 L232.0,213.3 L234.4,210.9 L234.4,209.4 L236.7,207.0 L236.7,205.5 L239.1,203.1 L239.1,201.6 L241.4,199.2 L241.4,197.7 L243.7,195.3 L243.7,193.7 L246.1,191.4 L246.1,189.8 L248.4,187.5 L248.4,185.9 L250.8,183.6 L250.8,182.0 L253.1,179.7 L253.1,178.1 L255.5,175.8 L255.5,173.4 L257.8,171.1 L257.8,168.0 L260.2,165.6 L260.2,162.5 L262.5,160.2 L262.5,155.5 L264.8,153.1 L264.8,143.0 L266.4,140.6 L266.4,110.9 L264.8,108.6 L264.8,100.8 L263.3,98.4 L263.3,94.5 L261.7,92.2 L261.7,89.8 L260.2,87.5 L260.2,85.9 L258.6,83.6 L258.6,82.0 L257.0,79.7 L257.0,78.1 L255.5,75.8 L255.5,74.2 L253.1,71.9 L253.1,70.3 L250.8,68.0 L250.8,66.4 L246.9,62.5 L246.9,60.9 L243.7,57.8 L242.2,57.8 L237.5,53.1 L235.9,53.1 L232.8,50.0 L231.2,50.0 L228.9,47.7 L226.6,47.7 L224.2,45.3 L221.1,45.3 L218.7,43.0 L214.8,43.0 L212.5,40.6 L207.0,40.6 L204.7,38.3 L196.9,38.3 L194.5,35.9 L171.1,35.9 L168.7,38.3 L153.1,38.3 L150.8,40.6 Z",
+    "upper_mounts": "M137.5,153.1 L127.3,153.1 L125.0,155.5 L112.5,155.5 L110.2,157.8 L105.5,157.8 L103.1,160.2 L100.0,160.2 L97.7,162.5 L95.3,162.5 L93.0,164.8 L90.6,164.8 L86.7,168.7 L86.7,170.3 L82.8,174.2 L82.8,175.8 L80.5,178.1 L80.5,180.5 L78.1,182.8 L78.1,185.2 L75.8,187.5 L75.8,189.8 L73.4,192.2 L73.4,193.7 L71.1,196.1 L71.1,197.7 L68.7,200.0 L68.7,201.6 L64.1,206.2 L64.1,207.8 L60.9,210.9 L60.9,212.5 L59.4,214.8 L59.4,216.4 L57.0,218.7 L57.0,220.3 L54.7,222.7 L54.7,224.2 L53.1,226.6 L53.1,228.1 L50.8,230.5 L50.8,232.0 L48.4,234.4 L48.4,236.7 L46.1,239.1 L46.1,242.2 L43.7,244.5 L43.7,251.6 L45.3,253.9 L45.3,255.5 L47.7,257.8 L49.2,257.8 L51.6,260.2 L53.9,260.2 L56.2,262.5 L61.7,262.5 L64.1,264.8 L71.1,264.8 L73.4,267.2 L92.2,267.2 L94.5,269.5 L141.4,269.5 L143.7,267.2 L149.2,267.2 L151.6,264.8 L155.5,264.8 L157.8,262.5 L160.2,262.5 L162.5,260.2 L164.8,260.2 L167.2,257.8 L168.7,257.8 L171.1,255.5 L172.7,255.5 L175.8,252.3 L177.3,252.3 L181.2,248.4 L182.8,248.4 L186.7,244.5 L186.7,243.0 L193.0,236.7 L193.0,235.2 L196.1,232.0 L196.1,230.5 L198.4,228.1 L198.4,226.6 L200.8,224.2 L200.8,222.7 L203.1,220.3 L203.1,218.7 L205.5,216.4 L205.5,214.8 L207.8,212.5 L207.8,210.9 L210.2,208.6 L210.2,207.0 L212.5,204.7 L212.5,203.1 L214.8,200.8 L214.8,199.2 L217.2,196.9 L217.2,195.3 L219.5,193.0 L219.5,190.6 L221.9,188.3 L221.9,185.9 L224.2,183.6 L224.2,180.5 L226.6,178.1 L226.6,174.2 L228.9,171.9 L228.9,164.8 L227.3,162.5 L227.3,160.9 L225.0,158.6 L223.4,158.6 L221.1,156.2 L218.7,156.2 L216.4,153.9 L212.5,153.9 L210.2,151.6 L201.6,151.6 L199.2,149.2 L168.0,149.2 L165.6,151.6 L139.8,151.6 Z",
+    "side_percussion": "M95.3,71.1 L82.0,71.1 L79.7,73.4 L75.8,73.4 L73.4,75.8 L71.1,75.8 L68.7,78.1 L66.4,78.1 L64.1,80.5 L61.7,80.5 L59.4,82.8 L57.8,82.8 L54.7,85.9 L53.1,85.9 L48.4,90.6 L48.4,92.2 L44.5,96.1 L44.5,97.7 L42.2,100.0 L42.2,101.6 L39.8,103.9 L39.8,105.5 L37.5,107.8 L37.5,110.2 L35.2,112.5 L35.2,116.4 L32.8,118.7 L32.8,121.9 L30.5,124.2 L30.5,128.1 L28.1,130.5 L28.1,134.4 L25.8,136.7 L25.8,141.4 L23.4,143.7 L23.4,148.4 L21.1,150.8 L21.1,155.5 L18.7,157.8 L18.7,162.5 L16.4,164.8 L16.4,168.7 L14.1,171.1 L14.1,175.0 L11.7,177.3 L11.7,182.0 L9.4,184.4 L9.4,191.4 L7.0,193.7 L7.0,215.6 L9.4,218.0 L9.4,222.7 L11.7,225.0 L11.7,229.7 L14.1,232.0 L14.1,235.2 L16.4,237.5 L16.4,240.6 L18.7,243.0 L18.7,246.1 L21.1,248.4 L21.1,250.8 L23.4,253.1 L23.4,255.5 L25.8,257.8 L25.8,259.4 L28.1,261.7 L28.1,263.3 L30.5,265.6 L30.5,267.2 L32.8,269.5 L32.8,271.1 L35.2,273.4 L35.2,275.0 L37.5,277.3 L37.5,278.9 L39.8,281.2 L39.8,282.8 L42.2,285.2 L42.2,286.7 L45.3,289.8 L45.3,291.4 L48.4,294.5 L48.4,296.1 L52.3,300.0 L52.3,301.6 L55.5,304.7 L55.5,306.2 L58.6,309.4 L58.6,310.9 L62.5,314.8 L62.5,316.4 L66.4,320.3 L66.4,321.9 L70.3,325.8 L70.3,327.3 L73.4,330.5 L73.4,332.0 L75.8,334.4 L75.8,335.9 L78.9,339.1 L80.5,339.1 L84.4,343.0 L86.7,343.0 L89.1,345.3 L96.1,345.3 L98.4,347.7 L124.2,347.7 L126.6,345.3 L134.4,345.3 L136.7,343.0 L141.4,343.0 L143.7,340.6 L146.9,340.6 L149.2,338.3 L151.6,338.3 L153.9,335.9 L156.2,335.9 L158.6,333.6 L160.2,333.6 L163.3,330.5 L164.8,330.5 L168.7,326.6 L168.7,325.0 L172.7,321.1 L172.7,319.5 L175.0,317.2 L175.0,315.6 L177.3,313.3 L177.3,311.7 L179.7,309.4 L179.7,307.0 L182.0,304.7 L182.0,302.3 L184.4,300.0 L184.4,297.7 L186.7,295.3 L186.7,292.2 L189.1,289.8 L189.1,286.7 L191.4,284.4 L191.4,280.5 L193.7,278.1 L193.7,272.7 L196.1,270.3 L196.1,262.5 L198.4,260.2 L198.4,247.7 L200.8,245.3 L200.8,220.3 L203.1,218.0 L203.1,192.2 L201.6,189.8 L201.6,157.8 L200.0,155.5 L200.0,140.6 L198.4,138.3 L198.4,132.8 L196.9,130.5 L196.9,127.3 L195.3,125.0 L195.3,122.7 L193.0,120.3 L193.0,118.0 L190.6,115.6 L190.6,114.1 L187.5,110.9 L187.5,109.4 L182.8,104.7 L182.8,103.1 L180.5,100.8 L178.9,100.8 L175.8,97.7 L174.2,97.7 L171.9,95.3 L170.3,95.3 L168.0,93.0 L165.6,93.0 L163.3,90.6 L160.9,90.6 L158.6,88.3 L156.2,88.3 L153.9,85.9 L151.6,85.9 L149.2,83.6 L146.9,83.6 L144.5,81.2 L142.2,81.2 L139.8,78.9 L137.5,78.9 L135.2,76.6 L132.0,76.6 L129.7,74.2 L125.8,74.2 L123.4,71.9 L119.5,71.9 L117.2,69.5 L97.7,69.5 Z",
+    "thumb_venus": "M136.7,41.4 L127.3,41.4 L125.0,43.7 L118.0,43.7 L115.6,46.1 L110.9,46.1 L108.6,48.4 L105.5,48.4 L103.1,50.8 L100.8,50.8 L98.4,53.1 L96.1,53.1 L93.7,55.5 L92.2,55.5 L89.8,57.8 L88.3,57.8 L85.2,60.9 L83.6,60.9 L80.5,64.1 L78.9,64.1 L75.8,67.2 L75.8,68.7 L71.9,72.7 L71.9,74.2 L68.7,77.3 L68.7,78.9 L66.4,81.2 L66.4,82.8 L64.1,85.2 L64.1,86.7 L61.7,89.1 L61.7,90.6 L59.4,93.0 L59.4,94.5 L57.0,96.9 L57.0,98.4 L54.7,100.8 L54.7,102.3 L52.3,104.7 L52.3,106.2 L50.0,108.6 L50.0,110.2 L47.7,112.5 L47.7,114.1 L45.3,116.4 L45.3,118.0 L43.0,120.3 L43.0,121.9 L40.6,124.2 L40.6,125.8 L38.3,128.1 L38.3,129.7 L35.9,132.0 L35.9,133.6 L33.6,135.9 L33.6,137.5 L31.2,139.8 L31.2,141.4 L28.9,143.7 L28.9,145.3 L26.6,147.7 L26.6,149.2 L24.2,151.6 L24.2,153.9 L21.9,156.2 L21.9,158.6 L19.5,160.9 L19.5,164.1 L17.2,166.4 L17.2,170.3 L14.8,172.7 L14.8,178.9 L12.5,181.2 L12.5,189.1 L10.2,191.4 L10.2,242.2 L12.5,244.5 L12.5,250.8 L14.8,253.1 L14.8,257.0 L17.2,259.4 L17.2,262.5 L19.5,264.8 L19.5,267.2 L21.9,269.5 L21.9,271.9 L24.2,274.2 L24.2,275.8 L26.6,278.1 L26.6,279.7 L28.9,282.0 L28.9,283.6 L31.2,285.9 L31.2,287.5 L33.6,289.8 L33.6,291.4 L35.9,293.7 L35.9,295.3 L38.3,297.7 L38.3,299.2 L40.6,301.6 L40.6,303.1 L43.0,305.5 L43.0,307.0 L45.3,309.4 L45.3,310.9 L48.4,314.1 L48.4,315.6 L51.6,318.7 L51.6,320.3 L54.7,323.4 L54.7,325.0 L57.8,328.1 L57.8,329.7 L61.7,333.6 L61.7,335.2 L65.6,339.1 L65.6,340.6 L68.7,343.7 L70.3,343.7 L73.4,346.9 L75.0,346.9 L77.3,349.2 L78.9,349.2 L81.2,351.6 L83.6,351.6 L85.9,353.9 L89.1,353.9 L91.4,356.2 L96.9,356.2 L99.2,358.6 L124.2,358.6 L126.6,356.2 L138.3,356.2 L140.6,353.9 L146.9,353.9 L149.2,351.6 L153.1,351.6 L155.5,349.2 L157.8,349.2 L160.2,346.9 L162.5,346.9 L164.8,344.5 L166.4,344.5 L168.7,342.2 L170.3,342.2 L172.7,339.8 L174.2,339.8 L177.3,336.7 L178.9,336.7 L182.0,333.6 L183.6,333.6 L186.7,330.5 L188.3,330.5 L191.4,327.3 L193.0,327.3 L196.1,324.2 L197.7,324.2 L200.8,321.1 L202.3,321.1 L205.5,318.0 L207.0,318.0 L210.2,314.8 L211.7,314.8 L214.8,311.7 L216.4,311.7 L219.5,308.6 L221.1,308.6 L223.4,306.2 L225.0,306.2 L227.3,303.9 L228.9,303.9 L231.2,301.6 L232.8,301.6 L235.2,299.2 L236.7,299.2 L239.1,296.9 L240.6,296.9 L243.0,294.5 L244.5,294.5 L246.9,292.2 L248.4,292.2 L250.8,289.8 L252.3,289.8 L254.7,287.5 L256.2,287.5 L259.4,284.4 L260.9,284.4 L264.1,281.2 L264.1,279.7 L267.2,276.6 L267.2,275.0 L269.5,272.7 L269.5,271.1 L271.9,268.7 L271.9,267.2 L274.2,264.8 L274.2,262.5 L276.6,260.2 L276.6,257.8 L278.9,255.5 L278.9,252.3 L281.2,250.0 L281.2,246.1 L283.6,243.7 L283.6,239.1 L285.9,236.7 L285.9,228.9 L288.3,226.6 L288.3,166.4 L285.9,164.1 L285.9,158.6 L283.6,156.2 L283.6,152.3 L281.2,150.0 L281.2,147.7 L278.9,145.3 L278.9,143.7 L276.6,141.4 L276.6,139.8 L274.2,137.5 L274.2,135.9 L271.9,133.6 L271.9,132.0 L268.7,128.9 L268.7,127.3 L265.6,124.2 L265.6,122.7 L262.5,119.5 L262.5,118.0 L259.4,114.8 L259.4,113.3 L256.2,110.2 L256.2,108.6 L253.1,105.5 L253.1,103.9 L250.0,100.8 L250.0,99.2 L246.9,96.1 L246.9,94.5 L243.7,91.4 L243.7,89.8 L240.6,86.7 L240.6,85.2 L237.5,82.0 L237.5,80.5 L234.4,77.3 L234.4,75.8 L231.2,72.7 L231.2,71.1 L228.1,68.0 L228.1,66.4 L225.0,63.3 L225.0,61.7 L221.9,58.6 L221.9,57.0 L218.7,53.9 L218.7,52.3 L215.6,49.2 L215.6,47.7 L212.5,44.5 L212.5,43.0 L209.4,39.8 L209.4,38.3 L205.5,34.4 L203.9,34.4 L201.6,32.0 L200.0,32.0 L197.7,29.7 L195.3,29.7 L193.0,27.3 L189.8,27.3 L187.5,25.0 L182.8,25.0 L180.5,22.7 L166.4,22.7 L164.1,25.0 L154.7,25.0 L152.3,27.3 L147.7,27.3 L145.3,29.7 L143.0,29.7 L140.6,32.0 L139.1,32.0 L136.7,34.4 L135.2,34.4 L132.8,36.7 L131.2,36.7 L128.9,39.1 Z"
+  };
+
+  /* The reference photos show a LEFT hand. Mirror them for the right-hand round. */
+  var REFERENCE_HAND = "Left";
+  var HANDS = ["Right", "Left"];
+  var STEPS_PER_HAND = BASE_STEPS.length;
+
+  var CAPTURE_STEPS = [];
+  HANDS.forEach(function (hand) {
+    BASE_STEPS.forEach(function (b) {
+      CAPTURE_STEPS.push({
+        id: hand.toLowerCase() + "_" + b.id, base: b.id, hand: hand,
+        img: b.img, finger: b.finger, expect: b.expect, focus: b.focus
+      });
+    });
+  });
 
   /* ==========================================================
      STATE
      ========================================================== */
-  var stepIndex     = 0;
-  var captured      = {};        // stepId -> { dataUrl, blob }
-  var videoStream   = null;
-  var useLiveCamera = true;
-  var isLeftHand    = false;
-  var inquiryId     = null;
-  var profile       = null;   // the signed-in client's saved details
-  var authMode      = "signup";
-  var signedInMobile = "";    // the number behind the account
-  var netFailures   = 0;
-  var busy          = false;
-  var client        = null;
-  var uploadedUrls  = {};   // stepId -> Drive url, filled in as we go
-  var uploadJobs    = {};   // stepId -> in-flight promise
-  var checking      = false;  // true while an AI check is waiting on the server
-  var uploadChain   = Promise.resolve();  // uploads run one at a time, in order
+  var stepIndex = 0, captured = {}, videoStream = null, useLiveCamera = true;
+  var inquiryId = null, profile = null, authMode = "signup", signedInMobile = "";
+  var netFailures = 0, busy = false, client = null;
+  var uploadedUrls = {}, uploadJobs = {}, checking = false, uploadChain = Promise.resolve();
+  var returnToReview = false;
 
   var $ = function (id) { return document.getElementById(id); };
-  var video       = $("video"),
-      reviewImage = $("reviewImage"),
-      aiWarning   = $("aiWarning"),
-      snapBtn     = $("snapBtn"),
-      backBtn     = $("backBtn"),
-      retakeBtn   = $("retakeBtn"),
-      fileInput    = $("fileInput"),
-      galleryInput = $("galleryInput"),
-      filePickBtn  = $("filePickBtn"),
-      galleryBtn   = $("galleryBtn"),
-      fileBackBtn  = $("fileBackBtn"),
-      statusLine   = $("captureStatus");
+  var video = $("video"), reviewImage = $("reviewImage"), aiWarning = $("aiWarning"),
+      snapBtn = $("snapBtn"), backBtn = $("backBtn"), retakeBtn = $("retakeBtn"),
+      fileInput = $("fileInput"), galleryInput = $("galleryInput"),
+      filePickBtn = $("filePickBtn"), galleryBtn = $("galleryBtn"),
+      fileBackBtn = $("fileBackBtn"), statusLine = $("captureStatus");
 
   if (window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY) {
     client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -400,48 +747,35 @@
   /* ==========================================================
      WIRING
      ========================================================== */
+  $("langBtn").addEventListener("click", function () {
+    lang = lang === "en" ? "gu" : "en";
+    try { localStorage.setItem("palm_lang", lang); } catch (e) {}
+    applyLang();
+  });
   $("startBtn").addEventListener("click", startCapture);
   $("authSubmitBtn").addEventListener("click", submitAuth);
   $("authToggleBtn").addEventListener("click", toggleAuthMode);
-  $("authPassword").addEventListener("keydown", function (e) {
-    if (e.key === "Enter") submitAuth();
-  });
+  $("authPassword").addEventListener("keydown", function (e) { if (e.key === "Enter") submitAuth(); });
   $("saveProfileBtn").addEventListener("click", saveProfile);
-  $("editProfileBtn").addEventListener("click", function () {
-    fillProfileForm();
-    show("step-profile");
-  });
+  $("editProfileBtn").addEventListener("click", function () { fillProfileForm(); show("step-profile"); });
   $("signOutBtn").addEventListener("click", signOut);
   $("profileSignOutBtn").addEventListener("click", signOut);
   $("completeSignOutBtn").addEventListener("click", signOut);
-  $("profileBackBtn").addEventListener("click", function () {
-    if (profile) showReady(); else signOut();
-  });
+  $("profileBackBtn").addEventListener("click", function () { if (profile) showReady(); else signOut(); });
   $("anotherReadingBtn").addEventListener("click", function () {
-    // Fresh slate for a second reading without signing out.
-    stepIndex    = 0;
-    captured     = {};
-    uploadedUrls = {};
-    uploadJobs   = {};
-    inquiryId    = null;
+    stepIndex = 0; captured = {}; uploadedUrls = {}; uploadJobs = {}; inquiryId = null; returnToReview = false;
     showReady();
   });
   $("deleteAccountBtn").addEventListener("click", function () {
-    $("deleteError").classList.add("hidden");
-    $("deleteModal").classList.remove("hidden");
+    $("deleteError").classList.add("hidden"); $("deleteModal").classList.remove("hidden");
   });
-  $("cancelDeleteBtn").addEventListener("click", function () {
-    $("deleteModal").classList.add("hidden");
-  });
+  $("cancelDeleteBtn").addEventListener("click", function () { $("deleteModal").classList.add("hidden"); });
   $("confirmDeleteBtn").addEventListener("click", deleteAccount);
   $("helpBtn").addEventListener("click", function () { toggleHelp(true); });
   $("closeHelpBtn").addEventListener("click", function () { toggleHelp(false); });
-  $("helpModal").addEventListener("click", function (e) {
-    if (e.target === this) toggleHelp(false);
-  });
-  document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape") toggleHelp(false);
-  });
+  $("helpModal").addEventListener("click", function (e) { if (e.target === this) toggleHelp(false); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") toggleHelp(false); });
+  $("submitBtn").addEventListener("click", function () { show("step-uploading"); uploadAll(); });
 
   snapBtn.addEventListener("click", captureFromVideo);
   filePickBtn.addEventListener("click", function () { fileInput.value = ""; fileInput.click(); });
@@ -451,38 +785,28 @@
   backBtn.addEventListener("click", goPrevious);
   fileBackBtn.addEventListener("click", goPrevious);
   retakeBtn.addEventListener("click", retakeCurrent);
-  $("retryUploadBtn").addEventListener("click", function () {
-    show("step-uploading");
-    uploadAll();
-  });
+  $("retryUploadBtn").addEventListener("click", function () { show("step-uploading"); uploadAll(); });
   $("previewFrame").addEventListener("click", tapToFocus);
 
-  // Free the camera when the tab is hidden; reacquire on return.
   document.addEventListener("visibilitychange", function () {
-    if (document.hidden) {
-      stopCamera();
-    } else if (useLiveCamera && !$("step-camera").classList.contains("hidden") && !videoStream) {
-      initCamera();
-    }
+    if (document.hidden) stopCamera();
+    else if (useLiveCamera && !$("step-camera").classList.contains("hidden") && !videoStream) initCamera();
   });
   window.addEventListener("pagehide", stopCamera);
-
-  // Warn before leaving mid-flow.
   window.addEventListener("beforeunload", function (e) {
     var finished = !$("step-complete").classList.contains("hidden");
-    if (Object.keys(captured).length > 0 && !finished) {
-      e.preventDefault();
-      e.returnValue = "";
-    }
+    if (Object.keys(captured).length > 0 && !finished) { e.preventDefault(); e.returnValue = ""; }
   });
 
   /* ==========================================================
      SCREEN HELPERS
      ========================================================== */
-  function show(sectionId) {
-    ["step-auth", "step-profile", "step-ready", "step-camera",
-     "step-uploading", "step-complete", "step-failed"]
-      .forEach(function (id) { $(id).classList.toggle("hidden", id !== sectionId); });
+  var SCREENS = ["step-auth", "step-profile", "step-ready", "step-camera", "step-review",
+                 "step-uploading", "step-complete", "step-failed"];
+
+  function show(id) {
+    SCREENS.forEach(function (s) { $(s).classList.toggle("hidden", s !== id); });
+    $("pageHeader").classList.toggle("hidden", id === "step-camera");
     window.scrollTo(0, 0);
   }
 
@@ -494,32 +818,64 @@
   function setWarning(text, tone) {
     if (!text) { aiWarning.classList.add("hidden"); return; }
     aiWarning.className =
-      "absolute top-3 left-3 right-3 z-30 text-white text-xs font-semibold px-3 py-2 rounded-lg shadow-lg text-center " +
-      (tone === "error" ? "animate-pulse-red"
-       : tone === "ok"  ? "bg-emerald-600/95"
-                        : "bg-slate-800/95");
+      "absolute top-3 left-3 right-3 z-30 text-white text-sm font-bold px-3 py-2.5 rounded-xl shadow-lg text-center " +
+      (tone === "error" ? "animate-pulse-red" : tone === "ok" ? "bg-mehndi/95" : "bg-ink/85");
     aiWarning.textContent = text;
   }
 
   function setBusy(state, label) {
     busy = state;
-    snapBtn.disabled = state;
-    filePickBtn.disabled = state;
-    galleryBtn.disabled = state;
+    snapBtn.disabled = state; filePickBtn.disabled = state; galleryBtn.disabled = state;
     backBtn.disabled = state || stepIndex === 0;
     fileBackBtn.disabled = state || stepIndex === 0;
     retakeBtn.disabled = state || !captured[CAPTURE_STEPS[stepIndex].id];
     statusLine.textContent = label || "";
   }
 
+  function esc(v) {
+    return String(v == null ? "" : v).replace(/&/g, "&amp;").replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+  function getField(id, fb) { var el = $(id); return el ? el.value : (fb === undefined ? "" : fb); }
+  function setField(id, v)   { var el = $(id); if (el) el.value = v; }
+  function setText(id, v)    { var el = $(id); if (el) el.textContent = v; }
+  function buzz(ms)          { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) {} }
+
   /* ==========================================================
      ACCOUNTS
      ========================================================== */
+  var LOGIN_DOMAIN = "@palmreader.app";
+
+  function normaliseMobile(raw) {
+    var d = String(raw || "").replace(/\D/g, "");
+    if (d.length > 10 && d.indexOf("91") === 0) d = d.slice(2);
+    if (d.length > 10) d = d.slice(-10);
+    return d;
+  }
+  function loginEmailFor(m) { return m + LOGIN_DOMAIN; }
+
+  function showAuthError(msg) { var b = $("authError"); b.textContent = msg; b.classList.toggle("hidden", !msg); }
+  function showDetailsError(msg) { var b = $("detailsError"); b.textContent = msg; b.classList.toggle("hidden", !msg); }
+
+  function refreshAuthMode() {
+    var signup = authMode === "signup";
+    setText("authTitle",        t(signup ? "auth.createTitle" : "auth.signinTitle"));
+    setText("authBlurb",        t(signup ? "auth.createBlurb" : "auth.signinBlurb"));
+    setText("authSubmitBtn",    t(signup ? "auth.createBtn"   : "auth.signinBtn"));
+    setText("authToggleBtn",    t(signup ? "auth.toSignin"    : "auth.toCreate"));
+    setText("authPasswordHint", t(signup ? "auth.pwHintCreate": "auth.pwHintSignin"));
+    $("authPassword").setAttribute("autocomplete", signup ? "new-password" : "current-password");
+  }
+
+  function toggleAuthMode() {
+    authMode = authMode === "signin" ? "signup" : "signin";
+    refreshAuthMode();
+    showAuthError("");
+  }
+
   function signOut() {
     var finished = !$("step-complete").classList.contains("hidden");
-    if (Object.keys(captured).length && !finished) {
-      if (!window.confirm("You have photos that haven't been submitted. Sign out anyway?")) return;
-    }
+    if (Object.keys(captured).length && !finished && !window.confirm(t("signout.confirm"))) return;
     stopCamera();
     if (!client) return location.reload();
     client.auth.signOut().then(function () { location.reload(); });
@@ -527,136 +883,61 @@
 
   async function deleteAccount() {
     var btn = $("confirmDeleteBtn");
-    btn.disabled = true;
-    btn.textContent = "Deleting…";
-
+    btn.disabled = true; btn.textContent = t("del.deleting");
     var res = await client.rpc("delete_my_account");
-
     if (res.error) {
-      console.error(res.error);
-      btn.disabled = false;
-      btn.textContent = "Yes, delete everything";
-      var box = $("deleteError");
-      box.textContent = res.error.message || "Couldn't delete the account. Please try again.";
-      box.classList.remove("hidden");
+      btn.disabled = false; btn.textContent = t("del.yes");
+      var box = $("deleteError"); box.textContent = res.error.message || t("del.fail"); box.classList.remove("hidden");
       return;
     }
-
     stopCamera();
     await client.auth.signOut();
     location.reload();
   }
 
-  /* Supabase needs an email to identify an account. Clients never see one:
-     we build it from their mobile number. Nothing is ever sent to it. */
-  var LOGIN_DOMAIN = "@palmreader.app";
-
-  function normaliseMobile(raw) {
-    var d = String(raw || "").replace(/\D/g, "");
-    if (d.length > 10 && d.indexOf("91") === 0) d = d.slice(2);   // strip +91
-    if (d.length > 10) d = d.slice(-10);                          // keep last 10
-    return d;
-  }
-
-  function loginEmailFor(mobile) {
-    return mobile + LOGIN_DOMAIN;
-  }
-
-  function showAuthError(msg) {
-    var box = $("authError");
-    box.textContent = msg;
-    box.classList.toggle("hidden", !msg);
-  }
-
-  function toggleAuthMode() {
-    authMode = authMode === "signin" ? "signup" : "signin";
-    var signup = authMode === "signup";
-    $("authTitle").textContent      = signup ? "Create your account" : "Sign in";
-    $("authBlurb").textContent      = signup
-      ? "Use your mobile number and pick a password. You only do this once."
-      : "Sign in with the mobile number you registered.";
-    $("authSubmitBtn").textContent  = signup ? "Create account" : "Sign in";
-    $("authToggleBtn").textContent  = signup
-      ? "Already have an account? Sign in"
-      : "New here? Create an account";
-    $("authPassword").setAttribute("autocomplete", signup ? "new-password" : "current-password");
-    setText("authPasswordHint", signup
-      ? "Choose any password, at least 6 characters. Remember it for next time."
-      : "The password you chose when you created your account.");
-    showAuthError("");
-  }
-
   async function submitAuth() {
-    if (!client) return showAuthError("Couldn't connect. Check your internet and try again.");
+    if (!client) return showAuthError(t("err.connect"));
+    var mobile = normaliseMobile($("authMobile").value), password = $("authPassword").value;
+    if (mobile.length !== 10) return showAuthError(t("err.mobile"));
+    if (password.length < 6)  return showAuthError(t("err.password"));
 
-    var mobile   = normaliseMobile($("authMobile").value);
-    var password = $("authPassword").value;
-
-    if (mobile.length !== 10)  return showAuthError("Please enter your 10-digit mobile number.");
-    if (password.length < 6)   return showAuthError("Password must be at least 6 characters.");
-
-    var email = loginEmailFor(mobile);
-
-    var btn = $("authSubmitBtn");
-    var label = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = "Please wait…";
-    showAuthError("");
+    var email = loginEmailFor(mobile), btn = $("authSubmitBtn"), label = btn.textContent;
+    btn.disabled = true; btn.textContent = t("auth.wait"); showAuthError("");
 
     var res = authMode === "signup"
       ? await client.auth.signUp({ email: email, password: password })
       : await client.auth.signInWithPassword({ email: email, password: password });
 
-    btn.disabled = false;
-    btn.textContent = label;
+    btn.disabled = false; btn.textContent = label;
 
     if (res.error) {
-      var m = res.error.message || "Something went wrong.";
+      var m = res.error.message || "";
       if (/already registered|already been registered/i.test(m)) {
-        // Flip them straight to sign-in with the number still filled in.
         if (authMode === "signup") toggleAuthMode();
-        return showAuthError("This number already has an account. Enter your password to sign in.");
-      } else if (/invalid login/i.test(m)) {
-        m = "Mobile number or password is incorrect.";
-      } else if (/password/i.test(m) && /short|least/i.test(m)) {
-        m = "Password must be at least 6 characters.";
+        return showAuthError(t("err.exists"));
       }
-      return showAuthError(m);
+      if (/invalid login/i.test(m)) return showAuthError(t("err.badLogin"));
+      if (/password/i.test(m) && /short|least/i.test(m)) return showAuthError(t("err.password"));
+      return showAuthError(m || t("err.connect"));
     }
+    if (!res.data || !res.data.session) return showAuthError(t("err.session"));
 
-    if (!res.data || !res.data.session) {
-      return showAuthError("Couldn't start your session. Please try signing in again.");
-    }
-
-    // A brand new account starts with the number they signed up with.
     signedInMobile = mobile;
     await afterSignIn();
   }
 
-  /* Decide which screen a signed-in client lands on. */
   async function afterSignIn() {
     if (!signedInMobile) {
-      // Returning client: recover the number from the account we made at signup.
       var who = await client.auth.getUser();
-
-      // A stale or revoked token comes back as an error here. Clear it and
-      // send them to the sign-in screen rather than carrying on half-broken.
       if (!who || who.error || !who.data || !who.data.user) {
-        console.warn("Session no longer valid, clearing it.");
         try { await client.auth.signOut(); } catch (e) {}
         show("step-auth");
-        return showAuthError("Your session expired. Please sign in again.");
+        return showAuthError(t("err.session"));
       }
-
       signedInMobile = normaliseMobile((who.data.user.email || "").split("@")[0]);
     }
-
     profile = await loadProfile();
-
-    if (!profile) {
-      fillProfileForm();
-      return show("step-profile");
-    }
+    if (!profile) { fillProfileForm(); return show("step-profile"); }
     showReady();
   }
 
@@ -664,32 +945,14 @@
     var who = await client.auth.getUser();
     var uid = who && who.data && who.data.user ? who.data.user.id : null;
     if (!uid) return null;
-
     var res = await client.from("palm_profiles").select("*").eq("user_id", uid).maybeSingle();
     if (res.error) { console.error(res.error); return null; }
     return res.data || null;
   }
 
-  function getField(id, fallback) {
-    var el = $(id);
-    return el ? el.value : (fallback === undefined ? "" : fallback);
-  }
-
-  function setText(id, value) {
-    var el = $(id);
-    if (el) el.textContent = value;
-  }
-
-  function setField(id, value) {
-    var el = $(id);
-    if (el) el.value = value;
-    else console.warn("Missing form field: " + id);
-  }
-
   function fillProfileForm() {
     setField("fullName",     profile ? (profile.full_name || "") : "");
     setField("dob",          profile ? (profile.dob || "") : "");
-    setField("birthTime",    profile ? (profile.birth_time || "") : "");
     setField("birthPlace",   profile ? (profile.birth_place || "") : "");
     setField("mobile",       signedInMobile || (profile ? (profile.mobile || "") : ""));
     setField("dominantHand", profile ? (profile.dominant_hand || "Right") : "Right");
@@ -697,88 +960,56 @@
   }
 
   async function saveProfile() {
-    var name   = getField("fullName").trim();
-    var mobile = signedInMobile || normaliseMobile(getField("mobile"));
-    var dob    = getField("dob");
-    var place  = getField("birthPlace").trim();
-
-    if (name.length < 2)     return showDetailsError("Please enter your full name.");
-    if (mobile.length !== 10) return showDetailsError("Your account has no mobile number. Please sign out and sign in again.");
-    if ($("dob")        && !dob)   return showDetailsError("Please enter your date of birth.");
-    if ($("birthPlace") && !place) return showDetailsError("Please enter your place.");
+    var name = getField("fullName").trim(), mobile = signedInMobile || normaliseMobile(getField("mobile"));
+    var dob = getField("dob"), place = getField("birthPlace").trim();
+    if (name.length < 2)           return showDetailsError(t("err.name"));
+    if (mobile.length !== 10)      return showDetailsError(t("err.noMobile"));
+    if ($("dob") && !dob)          return showDetailsError(t("err.dob"));
+    if ($("birthPlace") && !place) return showDetailsError(t("err.place"));
     showDetailsError("");
 
     var btn = $("saveProfileBtn");
-    btn.disabled = true;
-    btn.textContent = "Saving…";
-
+    btn.disabled = true; btn.textContent = t("profile.saving");
     var res = await client.rpc("save_profile", {
-      p_full_name:     name,
-      p_dob:           dob,
-      p_birth_time:    getField("birthTime") || null,
-      p_birth_place:   place,
-      p_mobile:        mobile,
-      p_dominant_hand: getField("dominantHand", "Right")
+      p_full_name: name, p_dob: dob, p_birth_time: getField("birthTime") || null,
+      p_birth_place: place, p_mobile: mobile, p_dominant_hand: getField("dominantHand", "Right")
     });
-
-    btn.disabled = false;
-    btn.textContent = "Save and continue";
-
-    if (res.error) {
-      console.error(res.error);
-      return showDetailsError(res.error.message || "Couldn't save. Check your connection and try again.");
-    }
-
+    btn.disabled = false; btn.textContent = t("profile.save");
+    if (res.error) return showDetailsError(res.error.message || t("err.connect"));
     profile = await loadProfile();
     showReady();
   }
 
   function showReady() {
     var first = (profile.full_name || "").split(" ")[0];
-    $("readyGreeting").textContent = "Hello " + first;
-    $("readySummary").textContent =
-      profile.full_name + " · " + (profile.dominant_hand || "Right").toLowerCase() + " hand · " +
-      (profile.mobile || "") + (profile.birth_place ? " · " + profile.birth_place : "");
-    isLeftHand = profile.dominant_hand === "Left";
+    setText("readyGreeting", t("ready.hello", { name: first }));
+    $("readySummary").innerHTML =
+      esc(profile.full_name) + (profile.birth_place ? ", " + esc(profile.birth_place) : "") + "<br>" +
+      esc(profile.mobile || "") + "<br>" +
+      esc(t("ready.dominant")) + ": <strong class=\"text-ink\">" +
+      esc(t(profile.dominant_hand === "Left" ? "hand.left" : "hand.right")) + "</strong>";
     show("step-ready");
   }
 
   /* ==========================================================
-     START A READING
+     START
      ========================================================== */
-  function showDetailsError(msg) {
-    var box = $("detailsError");
-    box.textContent = msg;
-    box.classList.toggle("hidden", !msg);
-  }
-
   async function startCapture() {
     if (!profile) return showReady();
-
-    isLeftHand = profile.dominant_hand === "Left";
-
     var btn = $("startBtn");
-    btn.disabled = true;
-    btn.textContent = "Starting…";
-
-    // Create the Supabase record FIRST, so a half-finished session is still visible.
+    btn.disabled = true; btn.textContent = t("ready.starting");
     try {
       var res = await client.rpc("create_inquiry");
       if (res.error) throw res.error;
       inquiryId = res.data;
     } catch (err) {
-      console.error(err);
-      btn.disabled = false;
-      btn.textContent = "Start photo capture";
-      alert(err.message || "Couldn't reach the server. Check your connection and try again.");
+      btn.disabled = false; btn.textContent = t("ready.start");
+      alert(err.message || t("err.connect"));
       return;
     }
-
-    btn.disabled = false;
-    btn.textContent = "Start photo capture";
-
+    btn.disabled = false; btn.textContent = t("ready.start");
+    stepIndex = 0; returnToReview = false;
     show("step-camera");
-    renderDots();
     await initCamera();
     updateStepUI();
   }
@@ -789,21 +1020,11 @@
   async function initCamera() {
     var secure = window.isSecureContext || location.protocol === "https:" || location.hostname === "localhost";
     var supported = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
-
-    if (!secure || !supported) {
-      return fallbackToFileCapture(
-        !secure ? "This page must be served over HTTPS for the live camera."
-                : "Live camera isn't available in this browser."
-      );
-    }
+    if (!secure || !supported) return fallbackToFileCapture();
 
     try {
       videoStream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: "environment" },
-          width:  { ideal: 1920 },
-          height: { ideal: 1440 }
-        },
+        video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1440 } },
         audio: false
       });
       video.srcObject = videoStream;
@@ -812,39 +1033,31 @@
         video.onloadedmetadata = resolve;
         setTimeout(resolve, 4000);
       });
-      try { await video.play(); } catch (e) { /* some browsers resolve late; frame still renders */ }
-
-      if (!video.videoWidth) {
-        return fallbackToFileCapture("The live preview didn't start on this device.");
-      }
+      try { await video.play(); } catch (e) {}
+      if (!video.videoWidth) return fallbackToFileCapture();
       useLiveCamera = true;
       $("liveControls").classList.remove("hidden");
       $("fileControls").classList.add("hidden");
       $("cameraOff").classList.add("hidden");
+      video.classList.remove("hidden");
     } catch (err) {
       console.error("getUserMedia failed:", err);
-      var reason = (err && (err.name === "NotAllowedError" || err.name === "SecurityError"))
-        ? "Camera access was blocked."
-        : "The camera couldn't be opened here.";
-      fallbackToFileCapture(reason);
+      fallbackToFileCapture();
     }
   }
 
-  function fallbackToFileCapture(reason) {
+  function fallbackToFileCapture() {
     useLiveCamera = false;
     stopCamera();
     $("liveControls").classList.add("hidden");
     $("fileControls").classList.remove("hidden");
     $("cameraOff").classList.remove("hidden");
     video.classList.add("hidden");
-    statusLine.textContent = reason + " Your phone's camera app will be used instead.";
+    statusLine.textContent = t("cam.fallback");
   }
 
   function stopCamera() {
-    if (videoStream) {
-      videoStream.getTracks().forEach(function (t) { t.stop(); });
-      videoStream = null;
-    }
+    if (videoStream) { videoStream.getTracks().forEach(function (tr) { tr.stop(); }); videoStream = null; }
   }
 
   async function tapToFocus() {
@@ -853,130 +1066,193 @@
     if (!track || !track.getCapabilities) return;
     var caps = track.getCapabilities();
     try {
-      if (caps.focusMode && caps.focusMode.indexOf("single-shot") !== -1) {
+      if (caps.focusMode && caps.focusMode.indexOf("single-shot") !== -1)
         await track.applyConstraints({ advanced: [{ focusMode: "single-shot" }] });
-      } else if (caps.focusMode && caps.focusMode.indexOf("continuous") !== -1) {
+      else if (caps.focusMode && caps.focusMode.indexOf("continuous") !== -1)
         await track.applyConstraints({ advanced: [{ focusMode: "continuous" }] });
-      }
-    } catch (e) { /* focus control is optional */ }
+    } catch (e) {}
   }
 
   /* ==========================================================
      STEP UI
      ========================================================== */
-  function renderDots() {
-    $("progressDots").innerHTML = CAPTURE_STEPS.map(function (s, i) {
-      var cls = captured[s.id] ? "bg-emerald-400"
-              : i === stepIndex ? "bg-amber-400"
-              : "bg-slate-700";
-      return '<span class="w-1.5 h-1.5 rounded-full ' + cls + '"></span>';
+  // A simple hand glyph, fingers up. Both hands fill from the wrist as photos land.
+  var HAND_GLYPH =
+    '<rect x="24" y="58" width="52" height="62" rx="16"/>' +
+    '<rect x="24" y="20" width="12" height="52" rx="6"/>' +
+    '<rect x="38" y="12" width="12" height="60" rx="6"/>' +
+    '<rect x="52" y="18" width="12" height="54" rx="6"/>' +
+    '<rect x="66" y="30" width="12" height="44" rx="6"/>' +
+    '<rect x="2" y="66" width="13" height="40" rx="6.5" transform="rotate(-32 8.5 68)"/>';
+
+  function countDone(hand) {
+    var n = 0;
+    CAPTURE_STEPS.forEach(function (s) { if (s.hand === hand && captured[s.id]) n++; });
+    return n;
+  }
+
+  function renderHandProgress() {
+    var activeHand = CAPTURE_STEPS[stepIndex].hand;
+    $("handProgress").innerHTML = HANDS.map(function (hand, i) {
+      var done = countDone(hand), pct = done / STEPS_PER_HAND;
+      var fillH = Math.round(130 * pct), fillY = 130 - fillH;
+      var flip = hand === "Right" ? "translate(100,0) scale(-1,1)" : "";
+      var active = hand === activeHand, complete = done === STEPS_PER_HAND;
+      // The clip must hold plain shapes (no <g>), so the mirror goes on an
+      // outer group that wraps the fill as well — clip and fill share it.
+      return '' +
+        '<div class="flex items-center gap-2 ' + (active || complete ? "" : "opacity-60") + '">' +
+          '<svg viewBox="0 0 100 130" class="w-10 h-12" aria-hidden="true">' +
+            '<defs><clipPath id="clip' + i + '">' + HAND_GLYPH + '</clipPath></defs>' +
+            '<g transform="' + flip + '">' +
+              '<g fill="#E2D9F3">' + HAND_GLYPH + '</g>' +
+              '<rect x="0" y="' + fillY + '" width="100" height="' + fillH + '" fill="#3E8E5A" clip-path="url(#clip' + i + ')"/>' +
+              '<g fill="none" stroke="' + (active ? "#2A1D4F" : complete ? "#3E8E5A" : "#A79BC4") + '" stroke-width="5" stroke-linejoin="round">' + HAND_GLYPH + '</g>' +
+            '</g>' +
+          '</svg>' +
+          '<div class="leading-tight">' +
+            '<div class="text-xs font-bold ' + (active ? "text-ink" : complete ? "text-mehndi" : "text-ink-faint") + '">' + esc(t(hand === "Right" ? "hand.right" : "hand.left")) + '</div>' +
+            '<div class="text-base font-extrabold ' + (complete ? "text-mehndi" : active ? "text-ink" : "text-ink-faint") + '">' +
+              done + ' / ' + STEPS_PER_HAND + '</div>' +
+          '</div>' +
+        '</div>';
     }).join("");
   }
 
   function updateStepUI() {
     var step = CAPTURE_STEPS[stepIndex];
+    var handShort = t("hand." + step.hand);
+    var within = (stepIndex % STEPS_PER_HAND) + 1;
 
-    $("stepCounter").textContent = "Photo " + (stepIndex + 1) + " of " + CAPTURE_STEPS.length;
-    $("stepTitle").textContent   = step.title;
-    $("modalTitle").textContent  = step.title;
-    $("stepGuide").textContent   = useLiveCamera ? "Tap ? to see the reference pose."
-                                                 : "Tap Open camera, then confirm the shot.";
-    renderDots();
+    setText("stepCounter", t("cam.counter", { hand: handShort, n: within, total: STEPS_PER_HAND }));
+    setText("stepTitle",   t("step." + step.base) + " (" + handShort + ")");
+    setText("modalTitle",  t("step." + step.base) + " (" + handShort + ")");
+    setText("stepGuide",   t(useLiveCamera ? "cam.tapHelp" : "cam.tapOpen"));
+    renderHandProgress();
 
-    var overlay = $("fingerprintOverlay");
-    var refImg  = $("modalRefImage");
+    var overlay = $("fingerprintOverlay"), refImg = $("modalRefImage"), guide = $("handGuide");
+    var guideD = GUIDE_PATHS[step.base];
+
+    if (guideD && useLiveCamera) {
+      $("handGuidePath").setAttribute("d", guideD);
+      $("handGuidePath").setAttribute("transform", step.hand !== REFERENCE_HAND ? "translate(300,0) scale(-1,1)" : "");
+      guide.classList.remove("hidden");
+      $("handGuideHint").textContent = t("hint." + step.base);
+      $("handGuideHint").classList.remove("hidden");
+    } else {
+      guide.classList.add("hidden");
+      $("handGuideHint").classList.add("hidden");
+    }
 
     if (step.img) {
       refImg.src = step.img;
       refImg.classList.remove("hidden");
-      refImg.style.transform =
-        (isLeftHand && REFERENCE_HAND === "Right") || (!isLeftHand && REFERENCE_HAND === "Left")
-          ? "scaleX(-1)" : "scaleX(1)";
+      refImg.style.transform = (step.hand !== REFERENCE_HAND) ? "scaleX(-1)" : "scaleX(1)";
       overlay.classList.add("hidden");
-      $("modalRefText").textContent = "Copy this hand position as closely as you can.";
+      setText("modalRefText", t("help.copyPose", { hand: handShort.toLowerCase() }));
     } else {
-      refImg.classList.add("hidden");
-      refImg.removeAttribute("src");
+      refImg.classList.add("hidden"); refImg.removeAttribute("src");
       overlay.classList.toggle("hidden", !useLiveCamera);
-      $("fingerName").textContent = step.finger;
-      $("modalRefText").textContent =
-        "Hold your " + step.finger + " flat to the lens so the whole print fills the circle.";
+      var fingerWord = t("finger." + step.finger);
+      overlay.querySelector("[data-i18n-dyn='fingerLine']").textContent =
+        t("cam.fingerLine", { hand: handShort.toLowerCase(), finger: fingerWord });
+      setText("modalRefText", t("help.fingerPose", { hand: handShort.toLowerCase(), finger: fingerWord }));
     }
 
-    // Show a previously captured shot for this step, if there is one.
     if (captured[step.id]) {
       reviewImage.src = captured[step.id].dataUrl;
       reviewImage.classList.remove("hidden");
-      setWarning("Saved. Tap Retake to redo this one.", "ok");
+      setWarning(t("cam.saved"), "ok");
     } else {
-      reviewImage.classList.add("hidden");
-      reviewImage.removeAttribute("src");
+      reviewImage.classList.add("hidden"); reviewImage.removeAttribute("src");
       setWarning("");
     }
-
     setBusy(false, "");
   }
 
-  function goPrevious() {
-    if (busy || stepIndex === 0) return;
-    stepIndex--;
-    updateStepUI();
-  }
+  function goPrevious() { if (busy || stepIndex === 0) return; stepIndex--; updateStepUI(); }
 
   function retakeCurrent() {
     if (busy) return;
     var id = CAPTURE_STEPS[stepIndex].id;
-    delete captured[id];
-    delete uploadedUrls[id];   // the old copy in Drive is superseded
+    delete captured[id]; delete uploadedUrls[id];
     updateStepUI();
   }
 
   function advance() {
-    if (stepIndex < CAPTURE_STEPS.length - 1) {
-      stepIndex++;
-      updateStepUI();
-    } else {
-      show("step-uploading");
-      stopCamera();
-      uploadAll();
+    if (returnToReview) { returnToReview = false; stopCamera(); showReview(); return; }
+    // Jump to the first photo still missing; when none are, go to review.
+    for (var i = stepIndex + 1; i < CAPTURE_STEPS.length; i++) {
+      if (!captured[CAPTURE_STEPS[i].id]) { stepIndex = i; updateStepUI(); return; }
     }
+    for (var j = 0; j < CAPTURE_STEPS.length; j++) {
+      if (!captured[CAPTURE_STEPS[j].id]) { stepIndex = j; updateStepUI(); return; }
+    }
+    stopCamera();
+    showReview();
   }
 
   /* ==========================================================
-     CAPTURE — live camera
-     What gets saved is exactly what the preview frame shows.
+     REVIEW
+     ========================================================== */
+  function showReview() { renderReview(); show("step-review"); }
+
+  function renderReview() {
+    var missing = 0;
+    $("reviewGrid").innerHTML = HANDS.map(function (hand) {
+      var tiles = CAPTURE_STEPS.filter(function (s) { return s.hand === hand; }).map(function (s) {
+        var item = captured[s.id];
+        if (!item) missing++;
+        return '' +
+          '<button type="button" data-step="' + CAPTURE_STEPS.indexOf(s) + '" ' +
+            'class="review-tile relative aspect-[3/4] rounded-xl overflow-hidden border-2 ' +
+            (item ? "border-line hover:border-saffron" : "border-sindoor bg-sindoor-light") + ' transition">' +
+            (item ? '<img src="' + item.dataUrl + '" alt="" class="w-full h-full object-cover">'
+                  : '<span class="absolute inset-0 flex items-center justify-center text-sindoor text-xl font-extrabold">!</span>') +
+            (item && item.unverified ? '<span class="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-saffron"></span>' : "") +
+          '</button>';
+      }).join("");
+      return '' +
+        '<div>' +
+          '<p class="text-sm font-extrabold mb-2">' + esc(t("review.handHeading", { hand: t("hand." + hand) })) +
+            ' <span class="text-ink-faint font-semibold">' + countDone(hand) + ' / ' + STEPS_PER_HAND + '</span></p>' +
+          '<div class="grid grid-cols-5 gap-2">' + tiles + '</div>' +
+        '</div>';
+    }).join("");
+
+    Array.prototype.forEach.call(document.querySelectorAll(".review-tile"), function (btn) {
+      btn.addEventListener("click", async function () {
+        stepIndex = Number(this.getAttribute("data-step"));
+        var id = CAPTURE_STEPS[stepIndex].id;
+        delete captured[id]; delete uploadedUrls[id];
+        returnToReview = true;
+        show("step-camera");
+        await initCamera();
+        updateStepUI();
+      });
+    });
+    $("submitBtn").disabled = missing > 0;
+  }
+
+  /* ==========================================================
+     CAPTURE — live camera. Saved = exactly what the frame shows.
      ========================================================== */
   function cropToFrame(source, srcW, srcH) {
-    var canvas = document.createElement("canvas");
-    var sx, sy, sw, sh;
-    var srcRatio = srcW / srcH;
-
-    if (srcRatio > CAPTURE_RATIO) {         // source wider than frame → trim sides
-      sh = srcH; sw = srcH * CAPTURE_RATIO;
-      sx = (srcW - sw) / 2; sy = 0;
-    } else {                                 // source taller than frame → trim top/bottom
-      sw = srcW; sh = srcW / CAPTURE_RATIO;
-      sx = 0; sy = (srcH - sh) / 2;
-    }
-
-    var outH = Math.min(MAX_EDGE, Math.round(sh));
-    var outW = Math.round(outH * CAPTURE_RATIO);
-    canvas.width = outW;
-    canvas.height = outH;
-
+    var canvas = document.createElement("canvas"), sx, sy, sw, sh;
+    if (srcW / srcH > CAPTURE_RATIO) { sh = srcH; sw = srcH * CAPTURE_RATIO; sx = (srcW - sw) / 2; sy = 0; }
+    else { sw = srcW; sh = srcW / CAPTURE_RATIO; sx = 0; sy = (srcH - sh) / 2; }
+    var outH = Math.min(MAX_EDGE, Math.round(sh)), outW = Math.round(outH * CAPTURE_RATIO);
+    canvas.width = outW; canvas.height = outH;
     var ctx = canvas.getContext("2d");
     ctx.imageSmoothingQuality = "high";
     ctx.drawImage(source, sx, sy, sw, sh, 0, 0, outW, outH);
     return canvas;
   }
 
-  // Small copy used only for the AI check. The full-size one still goes to Drive.
   function shrinkForCheck(canvas) {
-    var outH = Math.min(CHECK_EDGE, canvas.height);
-    var outW = Math.round(outH * (canvas.width / canvas.height));
+    var outH = Math.min(CHECK_EDGE, canvas.height), outW = Math.round(outH * (canvas.width / canvas.height));
     var small = document.createElement("canvas");
-    small.width = outW;
-    small.height = outH;
+    small.width = outW; small.height = outH;
     var ctx = small.getContext("2d");
     ctx.imageSmoothingQuality = "medium";
     ctx.drawImage(canvas, 0, 0, outW, outH);
@@ -985,40 +1261,26 @@
 
   async function captureFromVideo() {
     if (busy) return;
-    if (!video.videoWidth) {
-      setWarning("The camera isn't ready yet. Wait a moment and try again.", "error");
-      return;
-    }
-    var canvas = cropToFrame(video, video.videoWidth, video.videoHeight);
-    await processCapture(canvas);
+    if (!video.videoWidth) { setWarning(t("cam.notReady"), "error"); return; }
+    await processCapture(cropToFrame(video, video.videoWidth, video.videoHeight));
   }
 
-  /* ==========================================================
-     CAPTURE — native camera app fallback
-     ========================================================== */
   async function captureFromFile(e) {
     var file = e.target.files && e.target.files[0];
     if (!file) return;
-    setBusy(true, "Reading photo…");
+    setBusy(true, t("cam.reading"));
     try {
-      var bitmapSource = await loadImage(file);
-      var canvas = cropToFrame(
-        bitmapSource,
-        bitmapSource.naturalWidth || bitmapSource.width,
-        bitmapSource.naturalHeight || bitmapSource.height
-      );
-      await processCapture(canvas);
+      var img = await loadImage(file);
+      await processCapture(cropToFrame(img, img.naturalWidth || img.width, img.naturalHeight || img.height));
     } catch (err) {
-      console.error(err);
-      setWarning("That photo couldn't be read. Please take it again.", "error");
+      setWarning(t("cam.readFail"), "error");
       setBusy(false, "");
     }
   }
 
   function loadImage(file) {
     return new Promise(function (resolve, reject) {
-      var url = URL.createObjectURL(file);
-      var img = new Image();
+      var url = URL.createObjectURL(file), img = new Image();
       img.onload  = function () { URL.revokeObjectURL(url); resolve(img); };
       img.onerror = function () { URL.revokeObjectURL(url); reject(new Error("decode failed")); };
       img.src = url;
@@ -1032,49 +1294,43 @@
     var step = CAPTURE_STEPS[stepIndex];
     var dataUrl = canvas.toDataURL("image/jpeg", JPEG_QUALITY);
 
-    reviewImage.src = dataUrl;
-    reviewImage.classList.remove("hidden");
-
-    setBusy(true, "");
-    setWarning("Checking the photo…", "info");
+    reviewImage.src = dataUrl; reviewImage.classList.remove("hidden");
+    setBusy(true, ""); setWarning(t("cam.checking"), "info");
 
     var startedAt = Date.now();
     var result = await verifyImage(shrinkForCheck(canvas), step);
-    var seconds = ((Date.now() - startedAt) / 1000).toFixed(1);
-    statusLine.textContent = "Checked in " + seconds + "s" +
-      (result.geminiMs ? " (AI " + (result.geminiMs / 1000).toFixed(1) + "s)" : "");
+    statusLine.textContent = t("cam.checkedIn", { s: ((Date.now() - startedAt) / 1000).toFixed(1) });
 
     if (result.networkError) {
       netFailures++;
       if (netFailures >= 2) {
-        // The check itself is down — don't trap the client. Keep the photo,
-        // flag it, and let the reader review it manually.
         captured[step.id] = { dataUrl: dataUrl, blob: await toBlob(canvas), unverified: true };
         queueUpload(step.id);
-        setWarning("Saved without the automatic check.", "ok");
+        setWarning(t("cam.unverified"), "ok");
+        buzz(40);
         setTimeout(advance, 700);
         return;
       }
-      setWarning("Couldn't reach the checker. Tap the shutter to try again.", "error");
+      setWarning(t("cam.noChecker"), "error");
       reviewImage.classList.add("hidden");
       setBusy(false, "");
       return;
     }
-
     netFailures = 0;
 
     if (!result.valid) {
-      setWarning(result.reason || "Please retake this photo.", "error");
-      reviewImage.classList.add("hidden");
-      reviewImage.removeAttribute("src");
+      setWarning(result.reason || t("cam.retakePlease"), "error");
+      reviewImage.classList.add("hidden"); reviewImage.removeAttribute("src");
+      buzz([60, 60, 60]);
       setBusy(false, "");
       return;
     }
 
     captured[step.id] = { dataUrl: dataUrl, blob: await toBlob(canvas), unverified: false };
     queueUpload(step.id);
-    setWarning("Looks good", "ok");
-    renderDots();
+    setWarning(t("cam.good"), "ok");
+    buzz(40);
+    renderHandProgress();
     setTimeout(advance, 600);
   }
 
@@ -1084,46 +1340,41 @@
       else resolve(dataUrlToBlob(canvas.toDataURL("image/jpeg", JPEG_QUALITY)));
     });
   }
-
   function dataUrlToBlob(dataUrl) {
-    var parts = dataUrl.split(",");
-    var bin = atob(parts[1]);
-    var arr = new Uint8Array(bin.length);
+    var bin = atob(dataUrl.split(",")[1]), arr = new Uint8Array(bin.length);
     for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
     return new Blob([arr], { type: "image/jpeg" });
   }
 
   /* ==========================================================
-     GEMINI CHECK (via Apps Script)
-     NOTE: no Content-Type header on purpose. Setting one triggers a
-     CORS preflight that Apps Script cannot answer.
+     GEMINI CHECK (via Apps Script; no Content-Type on purpose)
      ========================================================== */
   async function verifyImage(base64, step) {
-    var handWord = isLeftHand ? "left" : "right";
+    var handWord = step.hand.toLowerCase(), other = handWord === "left" ? "right" : "left";
+    var reasonLang = lang === "gu" ? "Gujarati, in Gujarati script" : "English";
     var prompt =
       'You are checking one intake photo for a palm reading.\n' +
-      'The required shot is "' + step.title + '": ' + step.expect + '.\n' +
-      'Judge the photo on this area only: ' + step.focus + '. That area must be ' +
-      'sharp and well lit, with the lines or ridges clear enough to trace. Ignore ' +
-      'the background and anything outside that area.\n' +
-      'The client is having their ' + handWord + ' hand read, so a ' + handWord + ' hand is ' +
-      'expected. Never reject a photo only because of which hand it shows.\n\n' +
+      'The required shot is "' + I18N.en["step." + step.base] + '": ' + step.expect + '.\n' +
+      'Judge the photo on this area only: ' + step.focus + '. That area must be sharp and well lit, ' +
+      'with the lines or ridges clear enough to trace. Ignore the background and anything outside that area.\n' +
+      'This shot should be of the ' + handWord + ' hand.\n\n' +
       'Accept by default. Reject ONLY if one of these is clearly and obviously true:\n' +
       '1. There is no human hand in the frame at all.\n' +
-      '2. The area described above is blurred, too dark, blown out by glare, or cut ' +
-      'off by the edge of the frame, so its lines cannot be traced.\n' +
-      '3. The hand is in a plainly different position from the one described — for ' +
-      'example the back of the hand when the palm was asked for. Small differences in ' +
-      'angle, framing, distance or zoom are fine; do not reject for those.\n\n' +
+      '2. The area described above is blurred, too dark, blown out by glare, or cut off by the edge ' +
+      'of the frame, so its lines cannot be traced.\n' +
+      '3. The hand is in a plainly different position from the one described — for example the back ' +
+      'of the hand when the palm was asked for. Small differences in angle, framing, distance or zoom ' +
+      'are fine; do not reject for those.\n' +
+      '4. It is unmistakably the wrong hand (a ' + other + ' hand instead of a ' + handWord + ' one). ' +
+      'Only apply this when you are certain; if the hand could be either, accept.\n\n' +
       'Rings, bangles, mehndi and skin tone are never reasons to reject.\n' +
-      'If you are unsure, accept. When rejecting, give one short instruction the ' +
-      'client can act on, under 10 words.\n' +
+      'If you are unsure, accept. When rejecting, give one short instruction the client can act on, ' +
+      'under 10 words, written in ' + reasonLang + '.\n' +
       'Respond with JSON only: {"valid":true} or {"valid":false,"reason":"..."}';
 
     var controller = new AbortController();
     var timer = setTimeout(function () { controller.abort(); }, 30000);
-
-    checking = true;   // pause background uploads so they don't queue ahead of us
+    checking = true;
     try {
       var res = await fetch(GOOGLE_SCRIPT_URL, {
         method: "POST",
@@ -1132,11 +1383,9 @@
       });
       clearTimeout(timer);
       if (!res.ok) throw new Error("HTTP " + res.status);
-
       var data = await res.json();
       if (data.ok === false) throw new Error(data.error || "backend error");
       if (typeof data.valid !== "boolean") throw new Error("unexpected response shape");
-
       return { valid: data.valid, reason: data.reason, geminiMs: data.geminiMs };
     } catch (err) {
       clearTimeout(timer);
@@ -1148,22 +1397,13 @@
   }
 
   /* ==========================================================
-     UPLOAD — sequential, with retries and honest failure
+     UPLOAD — background, one at a time, never ahead of a check
      ========================================================== */
-  /* Start uploading a photo immediately, in the background, while the client
-     moves on to the next one. By the time they finish photo 10, most are
-     already in Drive. */
   function queueUpload(stepId) {
     var item = captured[stepId];
     if (!item || uploadedUrls[stepId]) return;
-
     var mobile = (profile && profile.mobile ? profile.mobile : "").replace(/\D/g, "");
-    var stamp  = new Date().toISOString().slice(0, 10);
-    var name   = mobile + "_" + stamp + "_" + stepId + ".jpg";
-
-    // Apps Script handles one request at a time, so an upload running now
-    // would make the next AI check queue behind it. Wait for any check to
-    // finish, and run uploads strictly one after another.
+    var name = mobile + "_" + new Date().toISOString().slice(0, 10) + "_" + stepId + ".jpg";
     uploadJobs[stepId] = uploadChain = uploadChain
       .then(function () { return waitWhileChecking(); })
       .then(function () { return uploadOne(item.blob, name, mobile, inquiryId); })
@@ -1175,147 +1415,99 @@
   function waitWhileChecking() {
     if (!checking) return Promise.resolve();
     return new Promise(function (resolve) {
-      var iv = setInterval(function () {
-        if (!checking) { clearInterval(iv); resolve(); }
-      }, 200);
+      var iv = setInterval(function () { if (!checking) { clearInterval(iv); resolve(); } }, 200);
     });
   }
 
   async function uploadAll() {
     var mobile = (profile && profile.mobile ? profile.mobile : "").replace(/\D/g, "");
-    var stamp  = new Date().toISOString().slice(0, 10);
-    var photos = {};
-    var failed = [];
-    var done   = 0;
-    var total  = CAPTURE_STEPS.length;
+    var stamp = new Date().toISOString().slice(0, 10);
+    var photos = {}, failed = [], done = 0, total = CAPTURE_STEPS.length;
 
-    // Most photos uploaded in the background during capture. Let those finish.
-    $("uploadProgress").textContent = "Finishing the last few…";
+    setText("uploadProgress", t("upload.finishing"));
     await Promise.all(Object.keys(uploadJobs).map(function (k) { return uploadJobs[k]; }));
 
     for (var i = 0; i < CAPTURE_STEPS.length; i++) {
-      var step = CAPTURE_STEPS[i];
-      var item = captured[step.id];
-
-      if (uploadedUrls[step.id]) {          // already done in the background
-        photos[step.id] = uploadedUrls[step.id];
-        done++;
+      var step = CAPTURE_STEPS[i], item = captured[step.id];
+      if (uploadedUrls[step.id]) {
+        photos[step.id] = uploadedUrls[step.id]; done++;
         $("uploadBar").style.width = Math.round((done / total) * 100) + "%";
         continue;
       }
-
-      $("uploadProgress").textContent = "Photo " + (i + 1) + " of " + total + " — " + step.title;
-      if (!item) { failed.push(step.title); continue; }
+      setText("uploadProgress", t("upload.photo", { n: i + 1, total: total }));
+      if (!item) { failed.push(t("step." + step.base)); continue; }
 
       var url = null;
       for (var attempt = 1; attempt <= UPLOAD_TRIES && !url; attempt++) {
-        try {
-          url = await uploadOne(item.blob, mobile + "_" + stamp + "_" + step.id + ".jpg", mobile, inquiryId);
-        } catch (err) {
-          console.error("Upload attempt " + attempt + " for " + step.id + ":", err);
-          if (attempt < UPLOAD_TRIES) await sleep(1200 * attempt);
-        }
+        try { url = await uploadOne(item.blob, mobile + "_" + stamp + "_" + step.id + ".jpg", mobile, inquiryId); }
+        catch (err) { if (attempt < UPLOAD_TRIES) await sleep(1200 * attempt); }
       }
-
-      if (url) { photos[step.id] = url; }
-      else     { failed.push(step.title); }
-
+      if (url) photos[step.id] = url; else failed.push(t("step." + step.base) + " (" + t("hand." + step.hand) + ")");
       done++;
       $("uploadBar").style.width = Math.round((done / total) * 100) + "%";
     }
 
-    // Save whatever made it, even on partial failure.
     try {
-      await client.rpc("attach_photos", {
-        p_id:     inquiryId,
-        p_photos: photos,
-        p_status: failed.length ? "Photos Incomplete" : "New"
-      });
-    } catch (err) {
-      console.error("Could not attach photos:", err);
-    }
+      await client.rpc("attach_photos", { p_id: inquiryId, p_photos: photos, p_status: failed.length ? "Photos Incomplete" : "New" });
+    } catch (err) { console.error("Could not attach photos:", err); }
 
     if (failed.length) {
-      $("failedDetail").textContent =
-        failed.length + " of " + total + " photos failed to upload: " + failed.join(", ") +
-        ". The rest were saved.";
+      setText("failedDetail", t("fail.detail", { n: failed.length, total: total, list: failed.join(", ") }));
       show("step-failed");
       return;
     }
-
-    $("completeRef").textContent = inquiryId ? "Reference " + String(inquiryId).slice(0, 8) : "";
+    setText("completeRef", inquiryId ? t("done.ref", { ref: String(inquiryId).slice(0, 8) }) : "");
     show("step-complete");
+    buzz([40, 40, 40]);
   }
 
   async function uploadOne(blob, filename, mobile, id) {
     var base64 = await blobToBase64(blob);
     var controller = new AbortController();
     var timer = setTimeout(function () { controller.abort(); }, 60000);
-
     try {
       var res = await fetch(GOOGLE_SCRIPT_URL, {
         method: "POST",
-        body: JSON.stringify({
-          action:     "uploadPhoto",
-          filename:   filename,
-          mimeType:   "image/jpeg",
-          base64:     base64,
-          folderName: mobile + "_" + String(id || "").slice(0, 8)
-        }),
+        body: JSON.stringify({ action: "uploadPhoto", filename: filename, mimeType: "image/jpeg",
+                               base64: base64, folderName: mobile + "_" + String(id || "").slice(0, 8) }),
         signal: controller.signal
       });
-      clearTimeout(timer);
       if (!res.ok) throw new Error("HTTP " + res.status);
       var data = await res.json();
       if (!data.ok || !data.url) throw new Error(data.error || "no url returned");
       return data.url;
-    } finally {
-      clearTimeout(timer);
-    }
+    } finally { clearTimeout(timer); }
   }
 
   function blobToBase64(blob) {
     return new Promise(function (resolve, reject) {
-      var reader = new FileReader();
-      reader.onloadend = function () { resolve(String(reader.result).split(",")[1]); };
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
+      var r = new FileReader();
+      r.onloadend = function () { resolve(String(r.result).split(",")[1]); };
+      r.onerror = reject;
+      r.readAsDataURL(blob);
     });
   }
-
   function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
-  // Registering a service worker is what makes the site installable as an app.
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
-      navigator.serviceWorker.register("sw.js").catch(function (err) {
-        console.warn("Service worker registration failed:", err);
-      });
+      navigator.serviceWorker.register("sw.js").catch(function () {});
     });
   }
 
   /* ==========================================================
      BOOT
-     An existing session means a returning client: they skip
-     straight past the login and the details form.
      ========================================================== */
   (async function boot() {
-    var tag = $("versionTag");
-    if (tag) tag.textContent = "v" + APP_VERSION;
+    applyLang();
+    setText("versionTag", "v" + APP_VERSION);
     console.log("Palm Reader " + APP_VERSION);
 
-    if (!client) {
-      show("step-auth");
-      return showAuthError("Couldn't connect. Check your internet and try again.");
-    }
+    if (!client) { show("step-auth"); return showAuthError(t("err.connect")); }
     try {
       var res = await client.auth.getSession();
-      if (res.data && res.data.session) {
-        await afterSignIn();
-        return;
-      }
+      if (res.data && res.data.session) { await afterSignIn(); return; }
     } catch (err) {
-      console.error("Couldn't restore session:", err);
       try { await client.auth.signOut(); } catch (e) {}
     }
     show("step-auth");
