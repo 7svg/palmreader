@@ -532,7 +532,11 @@
   }
 
   async function loadProfile() {
-    var res = await client.from("palm_profiles").select("*").maybeSingle();
+    var who = await client.auth.getUser();
+    var uid = who && who.data && who.data.user ? who.data.user.id : null;
+    if (!uid) return null;
+
+    var res = await client.from("palm_profiles").select("*").eq("user_id", uid).maybeSingle();
     if (res.error) { console.error(res.error); return null; }
     return res.data || null;
   }
@@ -549,7 +553,7 @@
 
   async function saveProfile() {
     var name   = $("fullName").value.trim();
-    var mobile = (profile && profile.mobile ? profile.mobile : "").replace(/\D/g, "");
+    var mobile = $("mobile").value.replace(/\D/g, "");
     var dob    = $("dob").value;
     var place  = $("birthPlace").value.trim();
 
