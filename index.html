@@ -3,11 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Palm & Fingerprint Intake System</title>
+  <title>Palm & Finger Analysis Portal</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    /* Pulse animation for the AI scanning warning */
     @keyframes pulse-red {
       0%, 100% { background-color: rgba(239, 68, 68, 0.9); }
       50% { background-color: rgba(185, 28, 28, 0.9); }
@@ -17,13 +15,13 @@
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col items-center p-4">
 
-  <div class="max-w-md w-full my-auto space-y-4">
+  <div class="max-w-md w-full my-auto space-y-4 relative">
     <header class="text-center py-2">
-      <h1 class="text-xl font-bold tracking-tight text-amber-400">Palm & Finger Analysis Portal</h1>
-      <p class="text-xs text-slate-400">Please provide accurate details and clear photos under bright light.</p>
+      <h1 class="text-xl font-bold tracking-tight text-amber-400">Palm & Finger Analysis</h1>
+      <p class="text-xs text-slate-400">AI-validated capture portal.</p>
     </header>
 
-    <!-- STEP 1: Personal Details Form -->
+    <!-- STEP 1: Personal Details -->
     <div id="step-details" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
       <h2 class="text-md font-semibold text-slate-200 border-b border-slate-800 pb-2">1. Personal Information</h2>
       
@@ -47,13 +45,8 @@
       </div>
 
       <div>
-        <label class="block text-xs text-slate-400 mb-1">Mobile / WhatsApp Number</label>
+        <label class="block text-xs text-slate-400 mb-1">Mobile Number</label>
         <input id="mobile" type="tel" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm focus:border-amber-400 outline-none" required>
-      </div>
-
-      <div>
-        <label class="block text-xs text-slate-400 mb-1">Place of Birth (City, State)</label>
-        <input id="birthPlace" type="text" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm focus:border-amber-400 outline-none" required>
       </div>
 
       <button id="startBtn" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-3 rounded-xl transition mt-2">
@@ -64,82 +57,100 @@
     <!-- STEP 2: Camera Capture Interface -->
     <div id="step-camera" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col items-center">
       
-      <div class="w-full text-center mb-3">
-        <span id="stepCounter" class="text-xs bg-amber-500/20 text-amber-400 px-2.5 py-1 rounded-full font-mono uppercase">Photo 1 of 10</span>
-        <h3 id="stepTitle" class="font-bold text-base mt-2 text-slate-100">Full Open Palm</h3>
-        <p id="stepGuide" class="text-xs text-slate-400 mt-0.5">Align your hand inside the frame.</p>
+      <div class="w-full flex items-start justify-between mb-3 px-2">
+        <div class="w-6"></div> 
+        <div class="text-center flex-1">
+          <span id="stepCounter" class="text-xs bg-amber-500/20 text-amber-400 px-2.5 py-1 rounded-full font-mono uppercase">Photo 1 of 10</span>
+          <h3 id="stepTitle" class="font-bold text-base mt-2 text-slate-100">Full Open Palm</h3>
+          <p id="stepGuide" class="text-xs text-slate-400 mt-0.5">Check help [?] for reference.</p>
+        </div>
+        <button onclick="toggleHelp(true)" class="w-7 h-7 bg-amber-500 rounded-full text-slate-950 font-bold text-sm hover:bg-amber-400 transition flex items-center justify-center shadow-[0_0_10px_rgba(245,158,11,0.5)]">?</button>
       </div>
 
       <div class="relative w-full aspect-[3/4] bg-black rounded-xl overflow-hidden flex items-center justify-center border border-slate-800">
-        <video id="video" autoplay playsinline muted class="w-full h-full object-cover"></video>
-        <canvas id="qualityCanvas" class="hidden"></canvas>
+        <video id="video" autoplay playsinline webkit-playsinline muted class="absolute inset-0 w-full h-full object-cover z-0"></video>
+        
+        <div id="fingerprintOverlay" class="hidden absolute inset-0 flex flex-col items-center justify-center bg-black/40 text-center p-6 z-10">
+          <div class="w-16 h-16 border-2 border-amber-400 rounded-full mb-4 animate-pulse"></div>
+          <p class="text-amber-400 font-bold text-lg">Center <span id="fingerName"></span> Here</p>
+          <p class="text-slate-200 text-sm mt-2">Ensure lines are brightly lit and clearly focused.</p>
+        </div>
 
-        <!-- Dynamic Hand Position Outlines (SVG) -->
-        <svg id="guideOverlay" class="absolute inset-0 w-full h-full pointer-events-none stroke-amber-400/80 fill-none drop-shadow-md" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
-          <!-- Flat Hand Path -->
-          <path id="svg-flat" class="transition-all duration-500" stroke-width="1.5" stroke-dasharray="2 3" d="M 30,100 C 25,70 15,45 25,40 C 35,35 35,50 35,50 L 35,25 C 35,15 45,15 45,25 L 45,50 L 45,15 C 45,5 55,5 55,15 L 55,50 L 55,20 C 55,10 65,10 65,20 L 65,55 L 65,35 C 65,25 75,25 75,35 C 75,50 65,70 70,100 Z" />
-          
-          <!-- Side/Fist Path (Hidden initially) -->
-          <path id="svg-fist" class="transition-all duration-500 hidden" stroke-width="1.5" stroke-dasharray="2 3" d="M 35,100 C 30,80 25,60 30,45 C 35,30 55,25 65,35 C 75,45 80,60 70,75 C 60,90 55,100 55,100 Z" />
-
-          <!-- Single Finger Path (Hidden initially) -->
-          <path id="svg-finger" class="transition-all duration-500 hidden" stroke-width="1.5" stroke-dasharray="2 3" d="M 40,100 C 35,60 35,35 40,25 C 45,15 55,15 60,25 C 65,35 65,60 60,100 Z" />
-        </svg>
-
-        <!-- Dynamic Alert Banner -->
-        <div id="aiWarning" class="hidden absolute top-3 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg transition animate-pulse-red text-center mx-4">
-          Blurry! Hold still so lines are visible.
+        <div id="aiWarning" class="hidden absolute top-3 z-30 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg transition animate-pulse-red text-center mx-4">
+          Analyzing...
         </div>
       </div>
 
       <div class="flex items-center justify-between w-full mt-4 px-4">
-        <button id="retakeBtn" class="text-xs text-slate-400 hover:text-white underline">Retake</button>
-        <button id="snapBtn" class="w-16 h-16 rounded-full border-4 border-amber-400 flex items-center justify-center p-1 focus:scale-95 transition">
-          <div class="w-full h-full bg-amber-400 rounded-full"></div>
+        <button id="retakeBtn" class="text-xs text-slate-400 hover:text-white underline disabled:opacity-50">Retake</button>
+        <button id="snapBtn" class="w-16 h-16 rounded-full border-4 border-amber-400 flex items-center justify-center p-1 focus:scale-95 transition disabled:opacity-50">
+          <div class="w-full h-full bg-amber-400 rounded-full disabled:bg-slate-600"></div>
         </button>
-        <span class="text-xs text-slate-500">Auto-Focus</span>
+        <span class="text-xs text-slate-500">AI Guard</span>
+      </div>
+    </div>
+
+    <!-- DYNAMIC HELP INSTRUCTION MODAL -->
+    <div id="helpModal" class="hidden absolute inset-0 z-50 bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-4">
+      <div class="bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4 flex flex-col items-center text-center">
+        <h3 id="modalTitle" class="text-lg font-bold text-amber-400 border-b border-slate-700 w-full pb-2">Reference Guide</h3>
+        
+        <!-- Target for the specific step photo (Transforms applied here) -->
+        <img id="modalRefImage" src="" alt="Reference Pose" class="w-48 h-auto rounded-lg border border-slate-600 hidden transition-transform duration-300" />
+        
+        <p id="modalRefText" class="text-sm text-slate-300"></p>
+        
+        <ul class="text-xs text-slate-400 space-y-2 text-left bg-slate-950 p-3 rounded-lg w-full">
+          <li>• Match the hand angle exactly.</li>
+          <li>• Tap screen to focus on lines.</li>
+          <li>• Move to bright lighting.</li>
+        </ul>
+        <button onclick="toggleHelp(false)" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-3 rounded-xl transition mt-4">Got it</button>
       </div>
     </div>
 
     <!-- STEP 3: Submission Confirmation -->
     <div id="step-complete" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center shadow-xl space-y-3">
       <div class="w-12 h-12 bg-green-500/20 text-green-400 rounded-full flex items-center justify-center mx-auto text-xl font-bold">✓</div>
-      <h3 class="text-lg font-bold text-slate-100">Submission Received</h3>
-      <p class="text-xs text-slate-400">All 10 angles and fingerprints have been captured and saved. Your palmist will review the files and contact you shortly.</p>
+      <h3 class="text-lg font-bold text-slate-100">Upload Complete</h3>
+      <p class="text-xs text-slate-400">All 10 verified photos have been securely uploaded.</p>
     </div>
   </div>
 
-  <script>
+<script>
+    function toggleHelp(show) {
+      document.getElementById("helpModal").classList.toggle("hidden", !show);
+    }
+
     document.addEventListener("DOMContentLoaded", () => {
       
-      const SUPABASE_URL = "https://simfpaytvkqgknrrhvoj.supabase.co";
-      const SUPABASE_ANON_KEY = "sb_publishable_rfqgEkkZhzNEWKCxtPNZog_no_8KR5F";
-      const supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+      const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyeOBp_OnETEorWuc84xpNR2Pu_aNlz-UENZVlpvjIQCxvOvayEB2Fro4pRQCqogy0ZYg/exec";
 
-      // Notice the "guideShape" variable determining which red-outline to display
       const CAPTURE_STEPS = [
-        { id: "full_open", title: "1. Full Open Palm", guideShape: "flat", guide: "Fit hand in outline. Spread fingers flat." },
-        { id: "back_hand", title: "2. Back of Hand", guideShape: "flat", guide: "Flip hand. Fit outline." },
-        { id: "upper_mounts", title: "3. Upper Mounts", guideShape: "flat", guide: "Focus on bases of fingers." },
-        { id: "side_percussion", title: "4. Side Edge (Loose Fist)", guideShape: "fist", guide: "Make loose fist. Show pinky side edge." },
-        { id: "thumb_venus", title: "5. Thumb Base", guideShape: "fist", guide: "Show the side with the thumb." },
-        { id: "thumb_pad", title: "6. Thumb Fingerprint", guideShape: "finger", guide: "Center thumb pad in outline. Let camera focus." },
-        { id: "index_pad", title: "7. Index Fingerprint", guideShape: "finger", guide: "Center index pad in outline." },
-        { id: "middle_pad", title: "8. Middle Fingerprint", guideShape: "finger", guide: "Center middle pad in outline." },
-        { id: "ring_pad", title: "9. Ring Fingerprint", guideShape: "finger", guide: "Center ring pad in outline." },
-        { id: "pinky_pad", title: "10. Little Fingerprint", guideShape: "finger", guide: "Center pinky pad in outline." }
+        { id: "full_open", title: "1. Full Open Palm", img: "step1-open.jpg", fingerText: "" },
+        { id: "back_hand", title: "2. Back of Hand", img: "step2-back.jpg", fingerText: "" },
+        { id: "upper_mounts", title: "3. Upper Mounts", img: "step3-upper.jpg", fingerText: "" },
+        { id: "side_percussion", title: "4. Side Edge", img: "step4-side.jpg", fingerText: "" },
+        { id: "thumb_venus", title: "5. Thumb Base", img: "step5-thumb.jpg", fingerText: "" },
+        { id: "thumb_pad", title: "6. Thumb Fingerprint", img: "", fingerText: "Thumb Fingerprint" },
+        { id: "index_pad", title: "7. Index Fingerprint", img: "", fingerText: "Index Fingerprint" },
+        { id: "middle_pad", title: "8. Middle Fingerprint", img: "", fingerText: "Middle Fingerprint" },
+        { id: "ring_pad", title: "9. Ring Fingerprint", img: "", fingerText: "Ring Fingerprint" },
+        { id: "pinky_pad", title: "10. Little Fingerprint", img: "", fingerText: "Little Fingerprint" }
       ];
 
       let currentStepIndex = 0;
       let capturedBlobs = {};
       let videoStream = null;
+      let isLeftHand = false; // Stores the dominant hand globally
 
       const video = document.getElementById("video");
       const aiWarning = document.getElementById("aiWarning");
       const btnSnap = document.getElementById("snapBtn");
+      const modalRefImage = document.getElementById("modalRefImage");
 
       document.getElementById("startBtn").addEventListener("click", startPhotoProcess);
-      btnSnap.addEventListener("click", validateAndCapture);
+      btnSnap.addEventListener("click", validateAndCaptureWithGemini);
       document.getElementById("retakeBtn").addEventListener("click", retakeCurrentStep);
 
       function startPhotoProcess() {
@@ -152,13 +163,8 @@
           return;
         }
 
-        // MIRROR THE SVG OUTLINES IF LEFT HAND IS SELECTED
-        const guideOverlay = document.getElementById("guideOverlay");
-        if (dominantHand === "Left") {
-          guideOverlay.classList.add("-scale-x-100"); // Flips it horizontally
-        } else {
-          guideOverlay.classList.remove("-scale-x-100"); // Keeps it normal for Right
-        }
+        // Save the selection globally
+        isLeftHand = (dominantHand === "Left");
 
         document.getElementById("step-details").classList.add("hidden");
         document.getElementById("step-camera").classList.remove("hidden");
@@ -166,80 +172,104 @@
         updateStepUI();
       }
 
+      async function initCamera() {
+        try {
+          videoStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } },
+            audio: false
+          });
+          video.srcObject = videoStream;
+        } catch (err) {
+          alert("Camera permission denied. Please allow access.");
+        }
+      }
+
       function updateStepUI() {
         const step = CAPTURE_STEPS[currentStepIndex];
         document.getElementById("stepCounter").innerText = `Photo ${currentStepIndex + 1} of ${CAPTURE_STEPS.length}`;
         document.getElementById("stepTitle").innerText = step.title;
-        document.getElementById("stepGuide").innerText = step.guide;
+        document.getElementById("modalTitle").innerText = step.title;
 
-        // Toggle SVG shapes based on step requirement
-        document.getElementById("svg-flat").classList.add("hidden");
-        document.getElementById("svg-fist").classList.add("hidden");
-        document.getElementById("svg-finger").classList.add("hidden");
+        const fingerprintOverlay = document.getElementById("fingerprintOverlay");
+        const modalRefText = document.getElementById("modalRefText");
         
-        document.getElementById(`svg-${step.guideShape}`).classList.remove("hidden");
-        aiWarning.classList.add("hidden");
-      }
-
-      // Mathematical Sharpness Validator (Laplacian Variance)
-      function isImageSharpEnough(ctx, width, height) {
-        const imageData = ctx.getImageData(0, 0, width, height);
-        const data = imageData.data;
-        let grayscale = new Uint8Array(width * height);
-        
-        // Convert to grayscale
-        for (let i = 0; i < data.length; i += 4) {
-          grayscale[i/4] = data[i] * 0.299 + data[i+1] * 0.587 + data[i+2] * 0.114;
-        }
-        
-        let sum = 0, sumSq = 0, count = 0;
-        // Edge detection kernel
-        for (let y = 1; y < height - 1; y++) {
-          for (let x = 1; x < width - 1; x++) {
-            let idx = y * width + x;
-            let val = grayscale[idx] * 4 - grayscale[idx - 1] - grayscale[idx + 1] - grayscale[idx - width] - grayscale[idx + width];
-            sum += val;
-            sumSq += val * val;
-            count++;
+        if (step.img) {
+          modalRefImage.src = step.img;
+          modalRefImage.classList.remove("hidden");
+          fingerprintOverlay.classList.add("hidden");
+          modalRefText.innerText = "Copy the hand position shown above exactly.";
+          
+          // FORCE the flip to apply every single time the image loads
+          if (isLeftHand) {
+            modalRefImage.style.transform = "scaleX(-1)";
+          } else {
+            modalRefImage.style.transform = "scaleX(1)";
           }
+        } else {
+          modalRefImage.classList.add("hidden");
+          fingerprintOverlay.classList.remove("hidden");
+          document.getElementById("fingerName").innerText = step.fingerText;
+          modalRefText.innerText = `Focus the camera perfectly on your ${step.fingerText} so the lines are completely visible.`;
         }
-        let mean = sum / count;
-        let variance = (sumSq / count) - (mean * mean);
-        
-        // If variance is below 35, the micro-lines on the hand are too blurry.
-        return variance > 35;
+
+        aiWarning.classList.add("hidden");
       }
 
-      async function validateAndCapture() {
-        btnSnap.disabled = true;
-        aiWarning.classList.add("hidden");
+      async function askGemini(base64Image, stepInfo) {
+        const promptText = `Analyze this palmistry intake photo for the required step: "${stepInfo.title}".
+        CRITICAL RULES (Fail-Closed):
+        1. NO HAND: If there is no human hand (e.g., face, leg, object), return {"valid": false, "reason": "No hand detected. Please try again."}.
+        2. BLURRY LINES: The exact lines of the palm or fingerprint MUST be clearly visible. If they are blurry, out of focus, or hidden in shadows, return {"valid": false, "reason": "Lines are blurry. Tap to focus."}.
+        3. WRONG POSE: If the hand angle does not match "${stepInfo.title}", return {"valid": false, "reason": "Incorrect hand angle."}.
+        
+        Return ONLY valid JSON: {"valid": true} OR {"valid": false, "reason": "Short reason"}. No markdown.`;
 
+        try {
+          const response = await fetch(GOOGLE_SCRIPT_URL, {
+            method: "POST",
+            body: JSON.stringify({ action: "verifyImage", promptText: promptText, base64: base64Image })
+          });
+          const data = await response.json();
+          const rawText = data.candidates[0].content.parts[0].text;
+          return JSON.parse(rawText.replace(/```json/g, '').replace(/```/g, '').trim());
+        } catch (e) {
+          console.error("Validation Error:", e);
+          return { valid: false, reason: "Verification failed. Make sure the hand position is correct and the image is not blur." }; 
+        }
+      }
+
+      async function validateAndCaptureWithGemini() {
+        btnSnap.disabled = true;
+        document.getElementById("retakeBtn").disabled = true;
+        aiWarning.classList.remove("hidden");
+        aiWarning.innerText = "Scanning lines with AI...";
+        
         const canvas = document.createElement("canvas");
         canvas.width = video.videoWidth || 1280;
         canvas.height = video.videoHeight || 720;
         const ctx = canvas.getContext("2d");
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        const base64full = canvas.toDataURL("image/jpeg", 0.8);
+        const base64data = base64full.split(',')[1];
+        const step = CAPTURE_STEPS[currentStepIndex];
 
-        // Run the AI Sharpness Scan on the captured frame
-        const isSharp = isImageSharpEnough(ctx, canvas.width, canvas.height);
-
-        if (!isSharp) {
-          // Reject photo
-          aiWarning.innerText = "❌ Blurry! Lines are not visible. Move to better light and hold steady.";
-          aiWarning.classList.remove("hidden");
+        const validation = await askGemini(base64data, step);
+        
+        if (!validation.valid) {
+          aiWarning.innerText = `❌ ${validation.reason}`;
           btnSnap.disabled = false;
-          return; // Stop the function, force them to retake
+          document.getElementById("retakeBtn").disabled = false;
+          return; 
         }
 
-        // Passed validation, save the blob
         canvas.toBlob(async (blob) => {
-          const step = CAPTURE_STEPS[currentStepIndex];
           capturedBlobs[step.id] = blob;
-
           if (currentStepIndex < CAPTURE_STEPS.length - 1) {
             currentStepIndex++;
             updateStepUI();
             btnSnap.disabled = false;
+            document.getElementById("retakeBtn").disabled = false;
           } else {
             await finalizeAndUpload();
           }
@@ -254,71 +284,32 @@
       }
 
       async function finalizeAndUpload() {
-        document.getElementById("stepTitle").innerText = "Uploading to Google Drive (Please wait, do not close)...";
-        document.getElementById("stepGuide").innerText = "Processing 10 high-resolution images.";
+        document.getElementById("stepTitle").innerText = "Uploading to Server...";
+        document.getElementById("stepGuide").innerText = "Please keep this window open.";
+        aiWarning.classList.add("hidden");
         
-        const mobile = document.getElementById("mobile").value.trim();
-        const cleanMobile = mobile.replace(/[^0-9]/g, '');
-        const uploadedUrls = {};
-
-        // ⚠️ PASTE YOUR GOOGLE WEB APP URL HERE:
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz0msmh1k62XF2Ufvcje0Xb6nY-pieNEeXKdiiSyH55VtkyG609u_nKN077wvr3to-Klg/exec"; 
-
+        const mobile = document.getElementById("mobile").value.trim().replace(/[^0-9]/g, '');
+        
         const uploadPromises = Object.entries(capturedBlobs).map(async ([stepId, blob]) => {
-          const base64data = await new Promise((resolve) => {
+          const b64 = await new Promise((resolve) => {
             const reader = new FileReader();
             reader.onloadend = () => resolve(reader.result.split(',')[1]);
             reader.readAsDataURL(blob);
           });
-
           try {
-            const res = await fetch(GOOGLE_SCRIPT_URL, {
+            await fetch(GOOGLE_SCRIPT_URL, {
               method: "POST",
-              headers: { "Content-Type": "text/plain;charset=utf-8" },
-              body: JSON.stringify({
-                filename: `${cleanMobile}_${stepId}.jpg`,
-                mimeType: "image/jpeg",
-                base64: base64data
-              })
+              body: JSON.stringify({ filename: `${mobile}_${stepId}.jpg`, mimeType: "image/jpeg", base64: b64 })
             });
-            const result = await res.json();
-            if (result.status === "success") {
-              uploadedUrls[stepId] = result.url; 
-            }
-          } catch (err) {
-            console.error("Upload error for " + stepId, err);
-          }
+          } catch (err) { console.error("Upload error", err); }
         });
 
         await Promise.all(uploadPromises);
 
-        document.getElementById("stepTitle").innerText = "Saving profile to database...";
-
-        const payload = {
-          full_name: document.getElementById("fullName").value.trim(),
-          dob: document.getElementById("dob").value,
-          mobile: mobile,
-          birth_place: document.getElementById("birthPlace").value.trim(),
-          dominant_hand: document.getElementById("dominantHand").value,
-          photos: uploadedUrls, 
-          status: "Pending"
-        };
-
-        if (supabase) {
-          const { error } = await supabase.from("palm_inquiries").insert([payload]);
-          if (error) {
-            alert("Database Error: " + error.message);
-            return; 
-          }
-        }
-
-        if (videoStream) {
-          videoStream.getTracks().forEach(track => track.stop());
-        }
+        if (videoStream) videoStream.getTracks().forEach(track => track.stop());
         document.getElementById("step-camera").classList.add("hidden");
         document.getElementById("step-complete").classList.remove("hidden");
       }
-
     });
   </script>
 </body>
