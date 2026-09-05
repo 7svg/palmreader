@@ -13,7 +13,7 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&family=Noto+Sans+Gujarati:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&family=Noto+Sans+Gujarati:wght@400;700&family=Noto+Sans+Devanagari:wght@400;700&display=swap" rel="stylesheet">
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -31,7 +31,7 @@
             gold:    "#C9A24D"
           },
           fontFamily: {
-            sans: ['"Plus Jakarta Sans"', '"Noto Sans Gujarati"', "system-ui", "sans-serif"]
+            sans: ['"Plus Jakarta Sans"', '"Noto Sans Gujarati"', '"Noto Sans Devanagari"', "system-ui", "sans-serif"]
           },
           boxShadow: {
             card: "0 10px 30px -12px rgba(42,29,79,0.18)",
@@ -53,6 +53,7 @@
       font-family: "Plus Jakarta Sans", "Noto Sans Gujarati", system-ui, sans-serif;
     }
     html[lang="gu"] body { font-family: "Noto Sans Gujarati", "Plus Jakarta Sans", system-ui, sans-serif; }
+    html[lang="hi"] body { font-family: "Noto Sans Devanagari", "Plus Jakarta Sans", system-ui, sans-serif; }
     input, select, textarea, button { font-size: 16px; font-family: inherit; }
 
     @keyframes pulse-red {
@@ -77,7 +78,7 @@
 </head>
 <body class="bg-page text-ink flex flex-col items-center p-4">
 
-  <div class="max-w-md w-full space-y-4">
+  <div id="shell" class="max-w-md w-full space-y-4">
 
     <header id="pageHeader" class="flex items-center justify-between pt-1 pb-1">
       <div class="flex items-center gap-3">
@@ -87,10 +88,11 @@
           <p class="text-xs text-ink-soft" data-i18n="tagline">Both hands, twenty photos, checked as you go.</p>
         </div>
       </div>
-      <button id="langBtn" type="button" aria-label="Switch language"
-              class="shrink-0 text-sm font-bold px-3 py-1.5 rounded-full border-2 border-line bg-white text-ink hover:border-saffron transition">
-        ગુજરાતી
-      </button>
+      <div class="shrink-0 flex items-center gap-0.5 p-1 rounded-full border-2 border-line bg-white" role="group" aria-label="Language">
+        <button type="button" class="lang-pill" data-lang="en">EN</button>
+        <button type="button" class="lang-pill" data-lang="gu">ગુ</button>
+        <button type="button" class="lang-pill" data-lang="hi">हि</button>
+      </div>
     </header>
 
     <!-- ============ SIGN IN / CREATE ACCOUNT ============ -->
@@ -143,10 +145,16 @@
                  class="w-full bg-field border-2 border-line rounded-xl px-3 py-3.5 text-base focus:border-saffron outline-none">
         </div>
         <div>
-          <label for="birthPlace" class="block text-sm font-semibold mb-1.5" data-i18n="profile.place">Place</label>
-          <input id="birthPlace" type="text" data-i18n-ph="profile.placePh" placeholder="City"
+          <label for="birthPlace" class="block text-sm font-semibold mb-1.5" data-i18n="profile.birthPlace">Place of birth</label>
+          <input id="birthPlace" type="text" data-i18n-ph="profile.birthPlacePh" placeholder="Village or city"
                  class="w-full bg-field border-2 border-line rounded-xl px-3 py-3.5 text-base focus:border-saffron outline-none">
         </div>
+      </div>
+
+      <div>
+        <label for="city" class="block text-sm font-semibold mb-1.5" data-i18n="profile.city">Where you live</label>
+        <input id="city" type="text" data-i18n-ph="profile.cityPh" placeholder="City"
+               class="w-full bg-field border-2 border-line rounded-xl px-4 py-3.5 text-base focus:border-saffron outline-none">
       </div>
 
       <div class="grid grid-cols-2 gap-3">
@@ -202,10 +210,19 @@
       <button id="startBtn"
               class="w-full bg-saffron hover:bg-saffron-deep text-ink text-lg font-extrabold py-4 rounded-2xl shadow-lift transition disabled:opacity-50"
               data-i18n="ready.start">Start taking photos</button>
+
+      <div id="historyBox" class="hidden">
+        <p class="text-sm font-extrabold mb-2" data-i18n="ready.history">Your readings</p>
+        <ul id="historyList" class="space-y-1.5"></ul>
+      </div>
+
       <div class="flex justify-between">
         <button id="editProfileBtn" type="button" class="text-sm text-ink-soft hover:text-ink underline py-1" data-i18n="ready.edit">Edit my details</button>
         <button id="signOutBtn" type="button" class="text-sm text-ink-soft hover:text-ink underline py-1" data-i18n="common.signOut">Sign out</button>
       </div>
+      <button id="dashboardLink" type="button"
+              class="hidden w-full bg-ink hover:bg-ink-soft text-white text-sm font-bold py-3 rounded-2xl transition"
+              data-i18n="ready.dashboard">Open dashboard</button>
       <button id="deleteAccountBtn" type="button"
               class="w-full text-xs text-ink-faint hover:text-sindoor underline pt-1" data-i18n="ready.delete">Delete my account</button>
     </section>
@@ -327,7 +344,88 @@
               class="w-full bg-saffron hover:bg-saffron-deep text-ink text-lg font-extrabold py-4 rounded-2xl shadow-lift transition"
               data-i18n="fail.retry">Try again</button>
     </section>
+    <!-- ============ DASHBOARD (staff only) ============ -->
+    <section id="step-dashboard" class="hidden space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 class="text-2xl font-extrabold leading-tight">Consultations</h2>
+          <p id="dashUser" class="text-xs text-ink-faint"></p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="dashClientBtn" class="bg-white border-2 border-line hover:border-saffron text-ink font-semibold px-3.5 py-2 rounded-xl text-sm transition">Client app</button>
+          <button id="refreshBtn" class="bg-white border-2 border-line hover:border-saffron text-ink font-semibold px-3.5 py-2 rounded-xl text-sm transition">Refresh</button>
+          <button id="dashSignOutBtn" class="bg-white border-2 border-line hover:border-saffron text-ink font-semibold px-3.5 py-2 rounded-xl text-sm transition">Sign out</button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-white border border-line rounded-3xl p-4 md:h-[76vh] md:overflow-y-auto space-y-3 shadow-card">
+          <div class="flex items-center gap-2">
+            <input id="searchBox" type="search" placeholder="Search name or mobile"
+                   class="flex-1 min-w-0 bg-field border-2 border-line rounded-xl px-3 py-2.5 text-sm focus:border-saffron outline-none">
+            <select id="statusFilter" class="bg-field border-2 border-line rounded-xl px-2 py-2.5 text-sm focus:border-saffron outline-none">
+              <option value="">All</option>
+              <option value="New">New</option>
+              <option value="Photos Incomplete">Incomplete</option>
+              <option value="Call Scheduled">Scheduled</option>
+              <option value="Completed">Completed</option>
+            </select>
+          </div>
+          <p id="listCount" class="text-xs text-ink-faint px-1"></p>
+          <div id="inquiryList" class="space-y-2"><p class="text-sm text-ink-faint">Loading…</p></div>
+        </div>
+
+        <div id="detailPanel" class="md:col-span-2 bg-white border border-line rounded-3xl p-5 md:p-6 md:h-[76vh] md:overflow-y-auto hidden space-y-6 shadow-card">
+          <div class="flex flex-wrap items-start justify-between gap-3 border-b-2 border-line pb-4">
+            <div class="min-w-0">
+              <h3 id="clientName" class="text-2xl font-extrabold truncate"></h3>
+              <p id="clientMeta" class="text-sm text-ink-soft mt-2 leading-relaxed"></p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button id="whatsappBtn" class="bg-white border-2 border-line hover:border-saffron text-ink font-semibold text-sm px-3.5 py-2 rounded-xl transition">Message</button>
+              <button id="markScheduledBtn" class="bg-ink hover:bg-ink-soft text-white font-semibold text-sm px-3.5 py-2 rounded-xl transition">Mark scheduled</button>
+              <button id="completeBtn" class="bg-mehndi hover:bg-mehndi/90 text-white font-semibold text-sm px-3.5 py-2 rounded-xl transition">Complete &amp; send review link</button>
+            </div>
+          </div>
+          <div>
+            <h4 class="text-base font-extrabold mb-3">Captured photos</h4>
+            <div id="photoGrid" class="space-y-5"></div>
+            <p id="photoEmpty" class="hidden text-sm text-ink-faint">No photos were uploaded for this client yet.</p>
+          </div>
+          <div id="feedbackBlock" class="hidden bg-page border border-line rounded-2xl p-4">
+            <h4 class="text-sm font-extrabold mb-1">Client feedback</h4>
+            <p id="feedbackStars" class="text-saffron text-2xl leading-none"></p>
+            <p id="feedbackText" class="text-sm text-ink-soft mt-2"></p>
+          </div>
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <h4 class="text-base font-extrabold">Consultation notes</h4>
+              <span id="notesStatus" class="text-xs text-ink-faint"></span>
+            </div>
+            <textarea id="astrologerNotes" rows="6"
+                      class="w-full bg-field border-2 border-line rounded-2xl p-4 text-sm leading-relaxed focus:border-saffron outline-none"
+                      placeholder="Line formations, mounts, guidance points… saves by itself as you type."></textarea>
+          </div>
+        </div>
+      </div>
+    </section>
   </div>
+
+  <!-- Lightbox -->
+  <div id="lightbox" class="hidden fixed inset-0 z-50 bg-ink/90 flex flex-col items-center justify-center p-4" role="dialog" aria-modal="true">
+    <div class="relative w-full max-w-3xl flex items-center justify-center">
+      <button id="lightboxPrev" type="button" aria-label="Previous photo" class="absolute left-0 md:-left-14 w-11 h-11 rounded-full bg-white/15 hover:bg-white/30 text-white text-2xl flex items-center justify-center">‹</button>
+      <img id="lightboxImg" alt="" class="max-w-full max-h-[76vh] rounded-2xl object-contain">
+      <button id="lightboxNext" type="button" aria-label="Next photo" class="absolute right-0 md:-right-14 w-11 h-11 rounded-full bg-white/15 hover:bg-white/30 text-white text-2xl flex items-center justify-center">›</button>
+    </div>
+    <p id="lightboxLabel" class="text-base text-white font-bold mt-4"></p>
+    <p id="lightboxCount" class="text-xs text-white/60 mt-1"></p>
+    <div class="flex gap-3 mt-4">
+      <a id="lightboxOpen" href="#" target="_blank" rel="noopener" class="bg-white/15 hover:bg-white/25 text-white text-sm font-semibold px-4 py-2.5 rounded-xl">Open in Drive</a>
+      <button id="lightboxClose" class="bg-saffron hover:bg-saffron-deep text-ink font-extrabold text-sm px-5 py-2.5 rounded-xl">Close</button>
+    </div>
+  </div>
+  <div id="toast" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl text-sm font-semibold shadow-card"></div>
 
   <!-- ============ DELETE CONFIRMATION ============ -->
   <div id="deleteModal" class="hidden fixed inset-0 z-50 bg-ink/60 backdrop-blur-sm flex items-center justify-center p-4"
@@ -358,6 +456,7 @@
         <li class="flex gap-2"><span class="text-saffron font-extrabold">2</span><span data-i18n="help.tip2">Tap the preview once to focus.</span></li>
         <li class="flex gap-2"><span class="text-saffron font-extrabold">3</span><span data-i18n="help.tip3">Stand near a window or a bright lamp.</span></li>
         <li class="flex gap-2"><span class="text-saffron font-extrabold">4</span><span data-i18n="help.tip4">Fill the frame with your hand.</span></li>
+        <li class="flex gap-2"><span class="text-saffron font-extrabold">5</span><span data-i18n="help.tip5">Lines faint? Rub a little talcum powder on the skin first.</span></li>
       </ul>
       <button id="closeHelpBtn" type="button"
               class="w-full bg-saffron hover:bg-saffron-deep text-ink text-lg font-extrabold py-4 rounded-2xl shadow-lift transition"
@@ -384,7 +483,7 @@
   var SUPABASE_URL      = "https://simfpaytvkqgknrrhvoj.supabase.co";
   var SUPABASE_ANON_KEY = "sb_publishable_rfqgEkkZhzNEWKCxtPNZog_no_8KR5F";
 
-  var APP_VERSION   = "2026-09-05-s";
+  var APP_VERSION   = "2026-09-06-b";
   var MAX_EDGE      = 1400;
   var JPEG_QUALITY  = 0.82;
   var CHECK_EDGE    = 900;
@@ -420,14 +519,17 @@
       "err.connect": "Couldn't connect. Check your internet and try again.",
       "err.name": "Please enter your full name.",
       "err.dob": "Please enter your date of birth.",
-      "err.place": "Please enter your place.",
+      "err.place": "Please enter your place of birth.",
+      "err.city": "Please enter the city you live in.",
       "err.noMobile": "Your account has no mobile number. Please sign out and sign in again.",
       "profile.title": "Your details",
       "profile.blurb": "Entered once. We'll remember them next time.",
       "profile.name": "Full name",
       "profile.dob": "Date of birth",
-      "profile.place": "Place",
-      "profile.placePh": "City",
+      "profile.birthPlace": "Place of birth",
+      "profile.birthPlacePh": "Village or city",
+      "profile.city": "Where you live",
+      "profile.cityPh": "City",
       "profile.hand": "Dominant hand",
       "profile.handHelp": "The hand you write with.",
       "profile.save": "Save and continue",
@@ -447,6 +549,15 @@
       "ready.starting": "Starting…",
       "ready.edit": "Edit my details",
       "ready.delete": "Delete my account",
+      "ready.history": "Your readings",
+      "ready.noHistory": "No readings yet",
+      "ready.dashboard": "Open dashboard",
+      "status.Awaiting Photos": "Photos not sent yet",
+      "status.Photos Incomplete": "Some photos missing",
+      "status.New": "Photos received, being reviewed",
+      "status.Call Scheduled": "Call scheduled",
+      "status.Completed": "Completed",
+      "lang.en": "English", "lang.gu": "ગુજરાતી", "lang.hi": "हिन्दी",
       "cam.counter": "{hand} hand, photo {n} of {total}",
       "cam.tapHelp": "Tap ? to see the reference pose.",
       "cam.tapOpen": "Tap Take photo, then confirm the shot.",
@@ -467,6 +578,7 @@
       "cam.notReady": "The camera isn't ready yet. Wait a moment and try again.",
       "cam.retakePlease": "Please retake this photo.",
       "cam.seeHelp": "Tap ? to see how.",
+      "cam.powderTip": "Tip: rub a little talcum powder on the skin so the lines stand out.",
       "cam.readFail": "That photo couldn't be read. Please take it again.",
       "cam.reading": "Reading photo…",
       "cam.fallback": "Your phone's camera app will be used instead.",
@@ -477,6 +589,7 @@
       "help.tip2": "Tap the preview once to focus.",
       "help.tip3": "Stand near a window or a bright lamp.",
       "help.tip4": "Fill the frame with your hand.",
+      "help.tip5": "Lines faint? Rub a little talcum powder on the skin first.",
       "help.ok": "Got it",
       "review.title": "Check your photos",
       "review.blurb": "Tap any photo to take it again.",
@@ -510,7 +623,7 @@
       "step.back_hand": "Back of hand",
       "step.upper_mounts": "Upper mounts",
       "step.side_percussion": "Side edge",
-      "step.thumb_venus": "Thumb base",
+      "step.thumb_venus": "Closed hand",
       "step.thumb_pad": "Thumb print",
       "step.index_pad": "Index finger print",
       "step.middle_pad": "Middle finger print",
@@ -520,7 +633,7 @@
       "hint.back_hand": "Fit the back of your hand inside the outline",
       "hint.upper_mounts": "Bring the top of your palm into the oval",
       "hint.side_percussion": "Turn your fist side-on and fit it in the outline",
-      "hint.thumb_venus": "Make a fist and bring the base of your thumb into the circle",
+      "hint.thumb_venus": "Make a fist and fit it inside the outline",
       "hint.finger": "Hold the fingertip flat so the print fills the oval"
     },
     gu: {
@@ -547,14 +660,17 @@
       "err.connect": "જોડાણ થઈ શક્યું નથી. ઇન્ટરનેટ તપાસીને ફરી પ્રયત્ન કરો.",
       "err.name": "કૃપા કરીને પૂરું નામ લખો.",
       "err.dob": "કૃપા કરીને જન્મ તારીખ લખો.",
-      "err.place": "કૃપા કરીને ગામ કે શહેર લખો.",
+      "err.place": "કૃપા કરીને જન્મ સ્થળ લખો.",
+      "err.city": "કૃપા કરીને તમારું શહેર લખો.",
       "err.noMobile": "તમારા એકાઉન્ટમાં મોબાઇલ નંબર નથી. સાઇન આઉટ કરીને ફરી સાઇન ઇન કરો.",
       "profile.title": "તમારી વિગતો",
       "profile.blurb": "એક જ વાર લખો. આગલી વખતે અમે યાદ રાખીશું.",
       "profile.name": "પૂરું નામ",
       "profile.dob": "જન્મ તારીખ",
-      "profile.place": "ગામ / શહેર",
-      "profile.placePh": "શહેર",
+      "profile.birthPlace": "જન્મ સ્થળ",
+      "profile.birthPlacePh": "ગામ / શહેર",
+      "profile.city": "તમે ક્યાં રહો છો",
+      "profile.cityPh": "શહેર",
       "profile.hand": "મુખ્ય હાથ",
       "profile.handHelp": "જે હાથે તમે લખો છો.",
       "profile.save": "સાચવો અને આગળ વધો",
@@ -574,6 +690,15 @@
       "ready.starting": "શરૂ થઈ રહ્યું છે…",
       "ready.edit": "મારી વિગતો બદલો",
       "ready.delete": "મારું એકાઉન્ટ કાઢી નાખો",
+      "ready.history": "તમારા વાંચન",
+      "ready.noHistory": "હજી કોઈ વાંચન નથી",
+      "ready.dashboard": "ડેશબોર્ડ ખોલો",
+      "status.Awaiting Photos": "ફોટા હજી મોકલાયા નથી",
+      "status.Photos Incomplete": "કેટલાક ફોટા બાકી",
+      "status.New": "ફોટા મળ્યા, તપાસ ચાલુ",
+      "status.Call Scheduled": "ફોન નક્કી થયો",
+      "status.Completed": "પૂરું થયું",
+      "lang.en": "English", "lang.gu": "ગુજરાતી", "lang.hi": "हिन्दी",
       "cam.counter": "{hand} હાથ, ફોટો {n} / {total}",
       "cam.tapHelp": "નમૂનો જોવા ? દબાવો.",
       "cam.tapOpen": "'ફોટો લો' દબાવો, પછી ફોટો ચકાસો.",
@@ -594,6 +719,7 @@
       "cam.notReady": "કૅમેરો હજી તૈયાર નથી. થોડી વાર રાહ જુઓ.",
       "cam.retakePlease": "કૃપા કરીને આ ફોટો ફરી લો.",
       "cam.seeHelp": "કેવી રીતે તે જોવા ? દબાવો.",
+      "cam.powderTip": "ટિપ: ચામડી પર થોડો પાવડર લગાવો જેથી રેખાઓ સ્પષ્ટ દેખાય.",
       "cam.readFail": "આ ફોટો વાંચી શકાયો નથી. ફરી લો.",
       "cam.reading": "ફોટો વાંચી રહ્યા છીએ…",
       "cam.fallback": "તમારા ફોનનો કૅમેરો વપરાશે.",
@@ -604,6 +730,7 @@
       "help.tip2": "ફોકસ માટે સ્ક્રીન પર એક વાર દબાવો.",
       "help.tip3": "બારી કે તેજ લાઇટ પાસે ઊભા રહો.",
       "help.tip4": "આખી ફ્રેમમાં હાથ રાખો.",
+      "help.tip5": "રેખાઓ ઝાંખી છે? પહેલાં ચામડી પર થોડો પાવડર લગાવો.",
       "help.ok": "સમજાયું",
       "review.title": "તમારા ફોટા તપાસો",
       "review.blurb": "ફરી લેવા માટે ફોટા પર દબાવો.",
@@ -637,7 +764,7 @@
       "step.back_hand": "હાથની પાછળની બાજુ",
       "step.upper_mounts": "હથેળીનો ઉપરનો ભાગ",
       "step.side_percussion": "હાથની બાજુ",
-      "step.thumb_venus": "અંગૂઠાનું મૂળ",
+      "step.thumb_venus": "બંધ હાથ",
       "step.thumb_pad": "અંગૂઠાની છાપ",
       "step.index_pad": "તર્જની આંગળીની છાપ",
       "step.middle_pad": "વચલી આંગળીની છાપ",
@@ -647,13 +774,155 @@
       "hint.back_hand": "હાથની પાછળની બાજુ લીટીની અંદર રાખો",
       "hint.upper_mounts": "હથેળીનો ઉપરનો ભાગ ગોળામાં લાવો",
       "hint.side_percussion": "મુઠ્ઠી બાજુથી બતાવો અને લીટીની અંદર રાખો",
-      "hint.thumb_venus": "મુઠ્ઠી વાળો અને અંગૂઠાનું મૂળ ગોળામાં લાવો",
+      "hint.thumb_venus": "મુઠ્ઠી વાળો અને લીટીની અંદર રાખો",
       "hint.finger": "આંગળીનું ટેરવું સપાટ રાખો જેથી છાપ ગોળામાં આવે"
+    },
+    hi: {
+      "tagline": "दोनों हाथ, बीस फ़ोटो, हर फ़ोटो तुरंत जाँची जाती है।",
+      "auth.createTitle": "अपना खाता बनाएँ",
+      "auth.createBlurb": "अपना मोबाइल नंबर लिखें और एक पासवर्ड चुनें। यह सिर्फ़ एक बार करना है।",
+      "auth.signinTitle": "साइन इन करें",
+      "auth.signinBlurb": "जिस मोबाइल नंबर से खाता बनाया था, उसी से साइन इन करें।",
+      "auth.mobile": "मोबाइल नंबर",
+      "auth.mobilePh": "10 अंक",
+      "auth.password": "पासवर्ड",
+      "auth.pwHintCreate": "कोई भी पासवर्ड चुनें, कम से कम 6 अक्षर। अगली बार के लिए याद रखें।",
+      "auth.pwHintSignin": "खाता बनाते समय चुना गया पासवर्ड।",
+      "auth.createBtn": "खाता बनाएँ",
+      "auth.signinBtn": "साइन इन करें",
+      "auth.toSignin": "पहले से खाता है? साइन इन करें",
+      "auth.toCreate": "नए हैं? खाता बनाएँ",
+      "auth.wait": "कृपया प्रतीक्षा करें…",
+      "err.mobile": "कृपया अपना 10 अंकों का मोबाइल नंबर लिखें।",
+      "err.password": "पासवर्ड कम से कम 6 अक्षरों का होना चाहिए।",
+      "err.exists": "इस नंबर का खाता पहले से है। साइन इन करने के लिए पासवर्ड लिखें।",
+      "err.badLogin": "मोबाइल नंबर या पासवर्ड गलत है।",
+      "err.session": "आपका सेशन समाप्त हो गया। कृपया फिर से साइन इन करें।",
+      "err.connect": "कनेक्ट नहीं हो सका। इंटरनेट जाँचकर फिर कोशिश करें।",
+      "err.name": "कृपया पूरा नाम लिखें।",
+      "err.dob": "कृपया जन्म तिथि लिखें।",
+      "err.place": "कृपया जन्म स्थान लिखें।",
+      "err.city": "कृपया अपना शहर लिखें।",
+      "err.noMobile": "आपके खाते में मोबाइल नंबर नहीं है। साइन आउट करके फिर साइन इन करें।",
+      "profile.title": "आपकी जानकारी",
+      "profile.blurb": "एक बार लिखें। अगली बार हम याद रखेंगे।",
+      "profile.name": "पूरा नाम",
+      "profile.dob": "जन्म तिथि",
+      "profile.birthPlace": "जन्म स्थान",
+      "profile.birthPlacePh": "गाँव / शहर",
+      "profile.city": "आप कहाँ रहते हैं",
+      "profile.cityPh": "शहर",
+      "profile.hand": "प्रमुख हाथ",
+      "profile.handHelp": "जिस हाथ से आप लिखते हैं।",
+      "profile.save": "सहेजें और आगे बढ़ें",
+      "profile.saving": "सहेज रहे हैं…",
+      "hand.right": "दायाँ हाथ",
+      "hand.left": "बायाँ हाथ",
+      "hand.Right": "दायाँ",
+      "hand.Left": "बायाँ",
+      "common.cancel": "रद्द करें",
+      "common.signOut": "साइन आउट",
+      "ready.hello": "नमस्ते {name}",
+      "ready.dominant": "प्रमुख हाथ",
+      "ready.step1": "दायाँ हाथ, दस फ़ोटो",
+      "ready.step2": "बायाँ हाथ, दस फ़ोटो",
+      "ready.step3": "आपकी हस्तरेखा पढ़ने के लिए हम फ़ोन करेंगे",
+      "ready.start": "फ़ोटो लेना शुरू करें",
+      "ready.starting": "शुरू हो रहा है…",
+      "ready.edit": "मेरी जानकारी बदलें",
+      "ready.delete": "मेरा खाता हटाएँ",
+      "ready.history": "आपकी रीडिंग",
+      "ready.noHistory": "अभी तक कोई रीडिंग नहीं",
+      "ready.dashboard": "डैशबोर्ड खोलें",
+      "status.Awaiting Photos": "फ़ोटो अभी भेजे नहीं गए",
+      "status.Photos Incomplete": "कुछ फ़ोटो बाकी",
+      "status.New": "फ़ोटो मिल गए, जाँच जारी",
+      "status.Call Scheduled": "कॉल तय हो गई",
+      "status.Completed": "पूरा हुआ",
+      "lang.en": "English", "lang.gu": "ગુજરાતી", "lang.hi": "हिन्दी",
+      "cam.counter": "{hand} हाथ, फ़ोटो {n} / {total}",
+      "cam.tapHelp": "नमूना देखने के लिए ? दबाएँ।",
+      "cam.tapOpen": "'फ़ोटो लें' दबाएँ, फिर फ़ोटो जाँचें।",
+      "cam.holdStill": "हाथ स्थिर रखें और रोशनी अच्छी रखें।",
+      "cam.fingerLine": "अपने {hand} हाथ की {finger} यहाँ रखें",
+      "cam.usingApp": "आपके फ़ोन का कैमरा इस्तेमाल हो रहा है",
+      "cam.usingAppSub": "यहाँ लाइव प्रीव्यू नहीं है, हर फ़ोटो के लिए कैमरा खुलेगा।",
+      "cam.prev": "पीछे",
+      "cam.retake": "फिर से लें",
+      "cam.takePhoto": "फ़ोटो लें",
+      "cam.choosePhoto": "फ़ोटो चुनें",
+      "cam.prevPhoto": "पिछला फ़ोटो",
+      "cam.checking": "फ़ोटो जाँच रहे हैं…",
+      "cam.good": "बढ़िया, सही है",
+      "cam.saved": "सहेजा गया। दोबारा लेने के लिए 'फिर से लें' दबाएँ।",
+      "cam.noChecker": "जाँच नहीं हो सकी। फिर से बटन दबाएँ।",
+      "cam.unverified": "बिना जाँच के सहेजा गया।",
+      "cam.notReady": "कैमरा अभी तैयार नहीं है। थोड़ा रुककर फिर कोशिश करें।",
+      "cam.retakePlease": "कृपया यह फ़ोटो फिर से लें।",
+      "cam.seeHelp": "कैसे करें, यह देखने के लिए ? दबाएँ।",
+      "cam.powderTip": "टिप: त्वचा पर थोड़ा पाउडर लगाएँ ताकि रेखाएँ साफ़ दिखें।",
+      "cam.readFail": "यह फ़ोटो पढ़ा नहीं जा सका। फिर से लें।",
+      "cam.reading": "फ़ोटो पढ़ रहे हैं…",
+      "cam.fallback": "आपके फ़ोन का कैमरा इस्तेमाल होगा।",
+      "cam.checkedIn": "{s} सेकंड में जाँचा",
+      "help.copyPose": "अपने {hand} हाथ से यह स्थिति बनाएँ।",
+      "help.fingerPose": "अपने {hand} हाथ की {finger} लेंस के सामने सीधी रखें ताकि पूरी छाप गोले में आए।",
+      "help.tip1": "चित्र में दिखाए अनुसार हाथ रखें।",
+      "help.tip2": "फ़ोकस के लिए स्क्रीन पर एक बार दबाएँ।",
+      "help.tip3": "खिड़की या तेज़ रोशनी के पास खड़े हों।",
+      "help.tip4": "पूरे फ़्रेम में हाथ रखें।",
+      "help.tip5": "रेखाएँ हल्की हैं? पहले त्वचा पर थोड़ा पाउडर लगाएँ।",
+      "help.ok": "समझ गया",
+      "review.title": "अपने फ़ोटो जाँचें",
+      "review.blurb": "दोबारा लेने के लिए फ़ोटो पर दबाएँ।",
+      "review.send": "मेरे फ़ोटो भेजें",
+      "review.handHeading": "{hand} हाथ",
+      "upload.title": "आपके फ़ोटो भेज रहे हैं",
+      "upload.finishing": "आख़िरी कुछ पूरे हो रहे हैं…",
+      "upload.photo": "फ़ोटो {n} / {total}",
+      "upload.keepOpen": "पूरा होने तक यह स्क्रीन खुली रखें।",
+      "done.title": "सभी बीस फ़ोटो मिल गए",
+      "done.body": "हम आपकी हथेली देखकर कॉल के लिए WhatsApp पर संदेश भेजेंगे।",
+      "done.ref": "संदर्भ {ref}",
+      "done.another": "एक और रीडिंग शुरू करें",
+      "fail.title": "कुछ फ़ोटो नहीं भेजे जा सके",
+      "fail.detail": "{total} में से {n} फ़ोटो नहीं भेजे जा सके: {list}। बाकी सहेज लिए गए।",
+      "fail.retry": "फिर कोशिश करें",
+      "del.title": "अपना खाता हटाएँ?",
+      "del.body": "इससे आपकी सहेजी हुई जानकारी और सभी रीडिंग हट जाएँगी। इसे वापस नहीं किया जा सकता।",
+      "del.yes": "हाँ, सब हटाएँ",
+      "del.no": "खाता रखें",
+      "del.deleting": "हटा रहे हैं…",
+      "del.fail": "खाता नहीं हट सका। फिर कोशिश करें।",
+      "signout.confirm": "आपके फ़ोटो अभी भेजे नहीं गए हैं। फिर भी साइन आउट करें?",
+      "rotate": "कृपया फ़ोन सीधा रखें",
+      "finger.thumb": "अंगूठा",
+      "finger.index": "तर्जनी उँगली",
+      "finger.middle": "बीच की उँगली",
+      "finger.ring": "अनामिका उँगली",
+      "finger.little": "छोटी उँगली",
+      "step.full_open": "खुली हथेली",
+      "step.back_hand": "हाथ का पिछला हिस्सा",
+      "step.upper_mounts": "हथेली का ऊपरी हिस्सा",
+      "step.side_percussion": "हाथ की बग़ल",
+      "step.thumb_venus": "बंद हाथ",
+      "step.thumb_pad": "अंगूठे की छाप",
+      "step.index_pad": "तर्जनी की छाप",
+      "step.middle_pad": "बीच की उँगली की छाप",
+      "step.ring_pad": "अनामिका की छाप",
+      "step.pinky_pad": "छोटी उँगली की छाप",
+      "hint.full_open": "पूरा हाथ रेखा के अंदर रखें",
+      "hint.back_hand": "हाथ का पिछला हिस्सा रेखा के अंदर रखें",
+      "hint.upper_mounts": "हथेली का ऊपरी हिस्सा गोले में लाएँ",
+      "hint.side_percussion": "मुट्ठी बग़ल से दिखाएँ और रेखा के अंदर रखें",
+      "hint.thumb_venus": "मुट्ठी बाँधें और रेखा के अंदर रखें",
+      "hint.finger": "उँगली का सिरा सीधा रखें ताकि छाप गोले में आए"
     }
   };
 
+  var LANGS = ["en", "gu", "hi"];
   var lang = "en";
-  try { lang = localStorage.getItem("palm_lang") === "gu" ? "gu" : "en"; } catch (e) {}
+  try { var saved = localStorage.getItem("palm_lang"); if (LANGS.indexOf(saved) !== -1) lang = saved; } catch (e) {}
 
   function t(key, vars) {
     var s = (I18N[lang] && I18N[lang][key]) || I18N.en[key] || key;
@@ -669,7 +938,11 @@
     document.querySelectorAll("[data-i18n-ph]").forEach(function (el) {
       el.setAttribute("placeholder", t(el.getAttribute("data-i18n-ph")));
     });
-    $("langBtn").textContent = lang === "en" ? "ગુજરાતી" : "English";
+    Array.prototype.forEach.call(document.querySelectorAll(".lang-pill"), function (b) {
+      var on = b.getAttribute("data-lang") === lang;
+      b.className = "lang-pill text-xs font-bold px-2.5 py-1.5 rounded-full transition " +
+        (on ? "bg-ink text-white" : "text-ink-soft hover:text-ink");
+    });
     // Screens that build their own text
     refreshAuthMode();
     if (profile && !$("step-ready").classList.contains("hidden")) showReady();
@@ -695,7 +968,7 @@
       focus:  "the fleshy mound at the base of the thumb and the side of the hand" },
     { id: "thumb_venus",     img: "step5-thumb.jpg", finger: "",
       expect: "a closed fist facing the camera with the wrist visible",
-      focus:  "the curled fingers and the creases at the base of the thumb" },
+      focus:  "the whole closed hand: curled fingers, knuckles and the creases across it" },
     { id: "thumb_pad",  img: "", finger: "thumb",  expect: "a close-up of one fingertip pad", focus: "the ridge pattern on the fingertip" },
     { id: "index_pad",  img: "", finger: "index",  expect: "a close-up of one fingertip pad", focus: "the ridge pattern on the fingertip" },
     { id: "middle_pad", img: "", finger: "middle", expect: "a close-up of one fingertip pad", focus: "the ridge pattern on the fingertip" },
@@ -718,7 +991,7 @@
     back_hand:       { shape: "hand",      region: "all", flip: true },   // thumb is on the other side from behind
     upper_mounts:    { shape: "hand",      region: '<rect x="58" y="205" width="172" height="62" rx="31"/>' },
     side_percussion: { shape: "fistSide",  region: "all" },
-    thumb_venus:     { shape: "fistFront", extra: "fistThumb", region: '<ellipse cx="205" cy="290" rx="52" ry="46"/>' },
+    thumb_venus:     { shape: "fistFront", extra: "fistThumb", region: "all" },
     finger:          { shape: "finger",    region: '<ellipse cx="150" cy="178" rx="42" ry="58"/>' }
   };
 
@@ -746,6 +1019,8 @@
   var netFailures = 0, busy = false, client = null;
   var uploadedUrls = {}, uploadJobs = {}, checking = false, uploadChain = Promise.resolve();
   var returnToReview = false;
+  var isStaffUser = false;
+  var fastCheckAvailable = true;   // flips off if the edge function isn't deployed yet
 
   var $ = function (id) { return document.getElementById(id); };
   var video = $("video"), reviewImage = $("reviewImage"), aiWarning = $("aiWarning"),
@@ -761,10 +1036,13 @@
   /* ==========================================================
      WIRING
      ========================================================== */
-  $("langBtn").addEventListener("click", function () {
-    lang = lang === "en" ? "gu" : "en";
-    try { localStorage.setItem("palm_lang", lang); } catch (e) {}
-    applyLang();
+  Array.prototype.forEach.call(document.querySelectorAll(".lang-pill"), function (b) {
+    b.addEventListener("click", function () {
+      lang = this.getAttribute("data-lang");
+      try { localStorage.setItem("palm_lang", lang); } catch (e) {}
+      applyLang();
+      if (client && profile) client.rpc("set_language", { p_language: lang }).catch(function () {});
+    });
   });
   $("startBtn").addEventListener("click", startCapture);
   $("authSubmitBtn").addEventListener("click", submitAuth);
@@ -816,11 +1094,13 @@
      SCREEN HELPERS
      ========================================================== */
   var SCREENS = ["step-auth", "step-profile", "step-ready", "step-camera", "step-review",
-                 "step-uploading", "step-complete", "step-failed"];
+                 "step-uploading", "step-complete", "step-failed", "step-dashboard"];
 
   function show(id) {
     SCREENS.forEach(function (s) { $(s).classList.toggle("hidden", s !== id); });
-    $("pageHeader").classList.toggle("hidden", id === "step-camera");
+    $("pageHeader").classList.toggle("hidden", id === "step-camera" || id === "step-dashboard");
+    // The dashboard needs the full width of a laptop screen; everything else is phone-sized.
+    $("shell").className = (id === "step-dashboard" ? "max-w-7xl" : "max-w-md") + " w-full space-y-4";
     window.scrollTo(0, 0);
   }
 
@@ -920,11 +1200,13 @@
 
   async function submitAuth() {
     if (!client) return showAuthError(t("err.connect"));
-    var mobile = normaliseMobile($("authMobile").value), password = $("authPassword").value;
-    if (mobile.length !== 10) return showAuthError(t("err.mobile"));
-    if (password.length < 6)  return showAuthError(t("err.password"));
+    var raw = $("authMobile").value.trim(), password = $("authPassword").value;
+    var isEmail = raw.indexOf("@") !== -1;
+    var mobile = isEmail ? "" : normaliseMobile(raw);
+    if (!isEmail && mobile.length !== 10) return showAuthError(t("err.mobile"));
+    if (password.length < 6)             return showAuthError(t("err.password"));
 
-    var email = loginEmailFor(mobile), btn = $("authSubmitBtn"), label = btn.textContent;
+    var email = isEmail ? raw.toLowerCase() : loginEmailFor(mobile), btn = $("authSubmitBtn"), label = btn.textContent;
     btn.disabled = true; btn.textContent = t("auth.wait"); showAuthError("");
 
     var res = authMode === "signup"
@@ -949,18 +1231,30 @@
     await afterSignIn();
   }
 
-  async function afterSignIn() {
-    if (!signedInMobile) {
-      var who = await client.auth.getUser();
-      if (!who || who.error || !who.data || !who.data.user) {
-        try { await client.auth.signOut(); } catch (e) {}
-        show("step-auth");
-        return showAuthError(t("err.session"));
-      }
-      signedInMobile = normaliseMobile((who.data.user.email || "").split("@")[0]);
+  async function afterSignIn(opts) {
+    opts = opts || {};
+    var who = await client.auth.getUser();
+    if (!who || who.error || !who.data || !who.data.user) {
+      try { await client.auth.signOut(); } catch (e) {}
+      show("step-auth");
+      return showAuthError(t("err.session"));
     }
+    var em = who.data.user.email || "";
+    if (!signedInMobile && em.indexOf(LOGIN_DOMAIN) !== -1) signedInMobile = normaliseMobile(em.split("@")[0]);
+
+    // Staff accounts land on the dashboard; everyone else on the client flow.
+    try {
+      var st = await client.rpc("is_staff");
+      isStaffUser = !st.error && st.data === true;
+    } catch (e) { isStaffUser = false; }
+
+    if (isStaffUser && !opts.clientMode) return showDashboard(em);
+
     profile = await loadProfile();
-    if (!profile) { fillProfileForm(); return show("step-profile"); }
+    if (!profile) {
+      if (isStaffUser) return showDashboard(em);   // staff needn't fill a client profile
+      fillProfileForm(); return show("step-profile");
+    }
     showReady();
   }
 
@@ -977,6 +1271,7 @@
     setField("fullName",     profile ? (profile.full_name || "") : "");
     setField("dob",          profile ? (profile.dob || "") : "");
     setField("birthPlace",   profile ? (profile.birth_place || "") : "");
+    setField("city",         profile ? (profile.city || "") : "");
     setField("mobile",       signedInMobile || (profile ? (profile.mobile || "") : ""));
     setField("dominantHand", profile ? (profile.dominant_hand || "Right") : "Right");
     showDetailsError("");
@@ -984,18 +1279,20 @@
 
   async function saveProfile() {
     var name = getField("fullName").trim(), mobile = signedInMobile || normaliseMobile(getField("mobile"));
-    var dob = getField("dob"), place = getField("birthPlace").trim();
+    var dob = getField("dob"), place = getField("birthPlace").trim(), city = getField("city").trim();
     if (name.length < 2)           return showDetailsError(t("err.name"));
     if (mobile.length !== 10)      return showDetailsError(t("err.noMobile"));
     if ($("dob") && !dob)          return showDetailsError(t("err.dob"));
     if ($("birthPlace") && !place) return showDetailsError(t("err.place"));
+    if ($("city") && !city)        return showDetailsError(t("err.city"));
     showDetailsError("");
 
     var btn = $("saveProfileBtn");
     btn.disabled = true; btn.textContent = t("profile.saving");
     var res = await client.rpc("save_profile", {
       p_full_name: name, p_dob: dob, p_birth_time: getField("birthTime") || null,
-      p_birth_place: place, p_mobile: mobile, p_dominant_hand: getField("dominantHand", "Right")
+      p_birth_place: place, p_city: city, p_mobile: mobile,
+      p_dominant_hand: getField("dominantHand", "Right"), p_language: lang
     });
     btn.disabled = false; btn.textContent = t("profile.save");
     if (res.error) return showDetailsError(res.error.message || t("err.connect"));
@@ -1332,7 +1629,8 @@
 
     var startedAt = Date.now();
     var result = await verifyImage(shrinkForCheck(canvas), step);
-    statusLine.textContent = t("cam.checkedIn", { s: ((Date.now() - startedAt) / 1000).toFixed(1) });
+    statusLine.textContent = t("cam.checkedIn", { s: ((Date.now() - startedAt) / 1000).toFixed(1) }) +
+      (result.via === "fast" ? " ⚡" : "");
 
     if (result.networkError) {
       netFailures++;
@@ -1352,7 +1650,10 @@
     netFailures = 0;
 
     if (!result.valid) {
-      setWarning((result.reason || t("cam.retakePlease")) + " " + t("cam.seeHelp"), "error");
+      var reasonText = result.reason || t("cam.retakePlease");
+      var blurry = result.problem === "blur" ||
+        /blur|sharp|focus|faint|clear|detail|ધૂંધળ|ઝાંખ|સ્પષ્ટ|धुंधल|साफ़|स्पष्ट/i.test(reasonText);
+      setWarning(reasonText + (blurry ? " " + t("cam.powderTip") : "") + " " + t("cam.seeHelp"), "error");
       reviewImage.classList.add("hidden"); reviewImage.removeAttribute("src");
       buzz([60, 60, 60]);
       nudgeHelp();
@@ -1404,11 +1705,50 @@
       'Rings, bangles, mehndi and skin tone are never reasons to reject.\n' +
       'If you are unsure, accept. When rejecting, give one short instruction the client can act on, ' +
       'under 10 words, written in ' + reasonLang + '.\n' +
-      'Respond with JSON only: {"valid":true} or {"valid":false,"reason":"..."}';
+      'Also name the main problem as one word in "problem": "blur" (out of focus, low detail, ' +
+      'faint lines), "dark" (too dark or glare), "position" (wrong pose or cut off), "hand" ' +
+      '(wrong hand), or "none".\n' +
+      'Respond with JSON only: {"valid":true} or {"valid":false,"reason":"...","problem":"..."}';
 
+    checking = true;
+    try {
+      // Fast path: Supabase Edge Function → Gemini. Typically 1–3 s.
+      if (fastCheckAvailable && client) {
+        var fast = await checkViaEdge(prompt, base64);
+        if (fast) return fast;
+      }
+      // Slow path: Apps Script → Gemini. Works before the edge function is set up.
+      return await checkViaAppsScript(prompt, base64);
+    } finally {
+      checking = false;
+    }
+  }
+
+  async function checkViaEdge(prompt, base64) {
+    try {
+      var res = await client.functions.invoke("check-photo", { body: { promptText: prompt, base64: base64 } });
+      if (res.error) {
+        // Not deployed, or its secret is missing: stop trying it for this session.
+        var status = res.error.context && res.error.context.status;
+        if (status === 404 || status === 500 || /not found|Failed to send/i.test(res.error.message || "")) {
+          fastCheckAvailable = false;
+          console.warn("Fast check unavailable, using Apps Script:", res.error.message);
+          return null;
+        }
+        return null;
+      }
+      var data = res.data;
+      if (!data || data.ok === false || typeof data.valid !== "boolean") return null;
+      return { valid: data.valid, reason: data.reason, problem: data.problem, geminiMs: data.geminiMs, via: "fast" };
+    } catch (err) {
+      console.warn("Fast check failed:", err);
+      return null;
+    }
+  }
+
+  async function checkViaAppsScript(prompt, base64) {
     var controller = new AbortController();
     var timer = setTimeout(function () { controller.abort(); }, 30000);
-    checking = true;
     try {
       var res = await fetch(GOOGLE_SCRIPT_URL, {
         method: "POST",
@@ -1420,13 +1760,11 @@
       var data = await res.json();
       if (data.ok === false) throw new Error(data.error || "backend error");
       if (typeof data.valid !== "boolean") throw new Error("unexpected response shape");
-      return { valid: data.valid, reason: data.reason, geminiMs: data.geminiMs };
+      return { valid: data.valid, reason: data.reason, problem: data.problem, geminiMs: data.geminiMs, via: "script" };
     } catch (err) {
       clearTimeout(timer);
       console.error("Verification failed:", err);
       return { networkError: true };
-    } finally {
-      checking = false;
     }
   }
 
@@ -1522,6 +1860,262 @@
     });
   }
   function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+
+  /* ==========================================================
+     DASHBOARD (staff)
+     ========================================================== */
+  var BASE_LABELS = {
+    full_open: "Open palm", back_hand: "Back of hand", upper_mounts: "Upper mounts",
+    side_percussion: "Side edge", thumb_venus: "Closed hand", thumb_pad: "Thumb print",
+    index_pad: "Index print", middle_pad: "Middle print", ring_pad: "Ring print", pinky_pad: "Little print"
+  };
+  var STEP_ORDER = CAPTURE_STEPS.map(function (st) { return st.id; });
+  var inquiries = [], active = null, lightboxKeys = [], lightboxIndex = 0, notesTimer = null;
+  var LANG_NAMES = { en: "English", gu: "Gujarati", hi: "Hindi" };
+
+  function splitKey(key) {
+    var m = /^(right|left)_(.+)$/.exec(key);
+    return m ? { hand: m[1].charAt(0).toUpperCase() + m[1].slice(1), base: m[2] } : { hand: "", base: key };
+  }
+  function labelFor(key) {
+    var p = splitKey(key), base = BASE_LABELS[p.base] || p.base.replace(/_/g, " ");
+    return p.hand ? base + " (" + p.hand + ")" : base;
+  }
+  function toast(msg, tone) {
+    var el = $("toast");
+    el.textContent = msg;
+    el.className = "fixed bottom-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl text-sm font-semibold shadow-card " +
+      (tone === "error" ? "bg-sindoor text-white" : "bg-mehndi text-white");
+    el.classList.remove("hidden");
+    clearTimeout(el._t);
+    el._t = setTimeout(function () { el.classList.add("hidden"); }, 2600);
+  }
+  function driveThumb(url, size) {
+    if (!url) return "";
+    var m = url.match(/[?&]id=([a-zA-Z0-9_-]{20,})/) || url.match(/\/d\/([a-zA-Z0-9_-]{20,})/);
+    return m ? "https://drive.google.com/thumbnail?id=" + m[1] + "&sz=w" + (size || 800) : url;
+  }
+  function fmtDate(v) {
+    if (!v) return "not given";
+    var d = new Date(v);
+    return isNaN(d) ? String(v) : d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  }
+  function statusPill(status) {
+    var map = { "Completed": "bg-mehndi-light text-mehndi", "Call Scheduled": "bg-line text-ink",
+                "Photos Incomplete": "bg-sindoor-light text-sindoor", "Awaiting Photos": "bg-page text-ink-faint" };
+    return map[status] || "bg-saffron-light text-saffron-deep";
+  }
+
+  function showDashboard(email) {
+    $("dashUser").textContent = email || "";
+    show("step-dashboard");
+    fetchInquiries();
+  }
+
+  $("dashClientBtn").addEventListener("click", function () { afterSignIn({ clientMode: true }); });
+  $("dashboardLink").addEventListener("click", function () { showDashboard(); });
+  $("dashSignOutBtn").addEventListener("click", signOut);
+  $("refreshBtn").addEventListener("click", fetchInquiries);
+  $("searchBox").addEventListener("input", renderList);
+  $("statusFilter").addEventListener("change", renderList);
+  $("markScheduledBtn").addEventListener("click", function () { updateStatus("Call Scheduled"); });
+  $("completeBtn").addEventListener("click", completeAndSendFeedback);
+  $("whatsappBtn").addEventListener("click", openWhatsApp);
+
+  async function fetchInquiries() {
+    $("inquiryList").innerHTML = '<p class="text-sm text-ink-faint">Loading…</p>';
+    var res = await client.from("palm_inquiries").select("*").order("created_at", { ascending: false }).limit(500);
+    if (res.error) {
+      $("inquiryList").innerHTML = '<p class="text-sm text-sindoor font-semibold">Couldn\'t load: ' + esc(res.error.message) + '</p>';
+      return;
+    }
+    inquiries = res.data || [];
+    renderList();
+    if (active) {
+      var again = inquiries.filter(function (i) { return i.id === active.id; })[0];
+      if (again) selectInquiry(again);
+    }
+  }
+
+  function visibleInquiries() {
+    var q = $("searchBox").value.trim().toLowerCase(), status = $("statusFilter").value;
+    return inquiries.filter(function (i) {
+      if (status && i.status !== status) return false;
+      if (!q) return true;
+      return (i.full_name || "").toLowerCase().indexOf(q) !== -1 || (i.mobile || "").indexOf(q) !== -1;
+    });
+  }
+
+  function renderList() {
+    var list = visibleInquiries(), c = $("inquiryList");
+    $("listCount").textContent = list.length === inquiries.length
+      ? inquiries.length + " submissions" : list.length + " of " + inquiries.length + " submissions";
+    if (!list.length) {
+      c.innerHTML = '<p class="text-sm text-ink-faint">Nothing here yet. New submissions appear at the top.</p>';
+      return;
+    }
+    c.innerHTML = list.map(function (item) {
+      var count = item.photos ? Object.keys(item.photos).length : 0;
+      var isActive = active && active.id === item.id;
+      return '<button type="button" data-id="' + esc(item.id) + '" class="inquiry-card w-full text-left p-3.5 rounded-2xl border-2 transition ' +
+          (isActive ? "bg-saffron-light border-saffron" : "bg-field border-transparent hover:border-line") + '">' +
+          '<div class="flex items-center justify-between gap-2">' +
+            '<span class="font-extrabold text-sm truncate">' + esc(item.full_name || "Unnamed") + '</span>' +
+            '<span class="text-[11px] px-2 py-0.5 rounded-full font-bold shrink-0 ' + statusPill(item.status) + '">' + esc(item.status || "New") + '</span>' +
+          '</div>' +
+          '<p class="text-xs text-ink-soft mt-1">' + fmtDate(item.created_at) + ' &nbsp; ' + esc(item.mobile || "no number") + '</p>' +
+          '<p class="text-xs text-ink-faint mt-0.5">' + count + ' of 20 photos &nbsp;&nbsp; Dominant: ' + esc(item.dominant_hand || "?") +
+            (item.preferred_language ? ' &nbsp;&nbsp; ' + esc(LANG_NAMES[item.preferred_language] || item.preferred_language) : "") + '</p>' +
+        '</button>';
+    }).join("");
+    Array.prototype.forEach.call(c.querySelectorAll(".inquiry-card"), function (card) {
+      card.addEventListener("click", function () {
+        var id = this.getAttribute("data-id");
+        var item = inquiries.filter(function (i) { return String(i.id) === id; })[0];
+        if (item) selectInquiry(item);
+      });
+    });
+  }
+
+  function selectInquiry(item) {
+    active = item;
+    $("detailPanel").classList.remove("hidden");
+    $("clientName").textContent = item.full_name || "Unnamed";
+    $("clientMeta").innerHTML =
+      "Born " + esc(fmtDate(item.dob)) + (item.birth_time ? " at " + esc(item.birth_time) : "") +
+      (item.birth_place ? " in " + esc(item.birth_place) : "") +
+      (item.city ? "<br>Lives in " + esc(item.city) : "") + "<br>" +
+      esc(item.mobile || "no number") +
+      (item.preferred_language ? " &nbsp;·&nbsp; speaks " + esc(LANG_NAMES[item.preferred_language] || item.preferred_language) : "") + "<br>" +
+      "Dominant hand: <strong class=\"text-ink\">" + esc(item.dominant_hand || "not given") + "</strong>";
+    $("astrologerNotes").value = item.astrologer_notes || "";
+    $("notesStatus").textContent = "";
+
+    var photos = item.photos || {};
+    var known  = STEP_ORDER.filter(function (k) { return photos[k]; });
+    var others = Object.keys(photos).filter(function (k) { return STEP_ORDER.indexOf(k) === -1; });
+    lightboxKeys = known.concat(others);
+    $("photoEmpty").classList.toggle("hidden", lightboxKeys.length > 0);
+
+    function tile(key) {
+      var label = labelFor(key);
+      return '<div class="space-y-1">' +
+          '<button type="button" class="photo-btn block w-full aspect-[3/4] bg-page rounded-2xl overflow-hidden border-2 border-line hover:border-saffron transition" data-key="' + esc(key) + '">' +
+            '<img src="' + esc(driveThumb(photos[key], 400)) + '" alt="' + esc(label) + '" loading="lazy" class="w-full h-full object-cover" ' +
+              'onerror="this.parentNode.innerHTML=\'<span class=&quot;text-[11px] text-ink-faint&quot;>No preview</span>\'">' +
+          '</button>' +
+          '<p class="text-[11px] text-ink-soft truncate text-center">' + esc(label) + '</p>' +
+        '</div>';
+    }
+    var html = "";
+    HANDS.forEach(function (hand) {
+      var inHand = known.filter(function (k) { return splitKey(k).hand === hand; });
+      if (!inHand.length) return;
+      html += '<div class="space-y-2"><p class="text-sm font-extrabold">' + hand + ' hand <span class="text-ink-faint font-semibold">' +
+              inHand.length + ' of 10</span></p><div class="grid grid-cols-3 sm:grid-cols-5 gap-3">' + inHand.map(tile).join("") + '</div></div>';
+    });
+    var loose = known.filter(function (k) { return !splitKey(k).hand; }).concat(others);
+    if (loose.length) {
+      html += '<div class="space-y-2"><p class="text-sm font-extrabold">Earlier submission <span class="text-ink-faint font-semibold">hand not recorded</span></p>' +
+              '<div class="grid grid-cols-3 sm:grid-cols-5 gap-3">' + loose.map(tile).join("") + '</div></div>';
+    }
+    $("photoGrid").innerHTML = html;
+    Array.prototype.forEach.call($("photoGrid").querySelectorAll(".photo-btn"), function (btn) {
+      btn.addEventListener("click", function () { openLightbox(lightboxKeys.indexOf(this.getAttribute("data-key"))); });
+    });
+
+    var hasFeedback = item.client_rating || item.client_review;
+    $("feedbackBlock").classList.toggle("hidden", !hasFeedback);
+    if (hasFeedback) {
+      var r = item.client_rating || 0;
+      $("feedbackStars").textContent = "★".repeat(r) + "☆".repeat(Math.max(0, 5 - r));
+      $("feedbackText").textContent = item.client_review || "No written comment.";
+    }
+    renderList();
+    if (window.innerWidth < 768) $("detailPanel").scrollIntoView({ behavior: "smooth" });
+  }
+
+  function openLightbox(i) {
+    if (i < 0) return;
+    lightboxIndex = i;
+    var key = lightboxKeys[i], url = (active.photos || {})[key];
+    $("lightboxImg").src = driveThumb(url, 1600);
+    $("lightboxLabel").textContent = labelFor(key);
+    $("lightboxCount").textContent = (i + 1) + " of " + lightboxKeys.length;
+    $("lightboxOpen").href = url;
+    $("lightboxPrev").classList.toggle("opacity-30", i === 0);
+    $("lightboxNext").classList.toggle("opacity-30", i === lightboxKeys.length - 1);
+    $("lightbox").classList.remove("hidden");
+  }
+  function closeLightbox() { $("lightbox").classList.add("hidden"); $("lightboxImg").removeAttribute("src"); }
+  $("lightboxClose").addEventListener("click", closeLightbox);
+  $("lightboxPrev").addEventListener("click", function () { if (lightboxIndex > 0) openLightbox(lightboxIndex - 1); });
+  $("lightboxNext").addEventListener("click", function () { if (lightboxIndex < lightboxKeys.length - 1) openLightbox(lightboxIndex + 1); });
+  $("lightbox").addEventListener("click", function (e) { if (e.target === this) closeLightbox(); });
+  document.addEventListener("keydown", function (e) {
+    if ($("lightbox").classList.contains("hidden")) return;
+    if (e.key === "Escape") closeLightbox();
+    if (e.key === "ArrowLeft"  && lightboxIndex > 0) openLightbox(lightboxIndex - 1);
+    if (e.key === "ArrowRight" && lightboxIndex < lightboxKeys.length - 1) openLightbox(lightboxIndex + 1);
+  });
+
+  $("astrologerNotes").addEventListener("input", function () {
+    if (!active) return;
+    $("notesStatus").textContent = "Typing…";
+    clearTimeout(notesTimer);
+    notesTimer = setTimeout(saveNotes, 900);
+  });
+  async function saveNotes() {
+    if (!active) return;
+    var forId = active.id, text = $("astrologerNotes").value;
+    $("notesStatus").textContent = "Saving…";
+    var res = await client.from("palm_inquiries").update({ astrologer_notes: text }).eq("id", forId).select().single();
+    if (res.error) { $("notesStatus").textContent = "Not saved"; toast("Couldn't save notes: " + res.error.message, "error"); return; }
+    if (active && active.id === forId) {
+      active = res.data;
+      var idx = inquiries.findIndex(function (i) { return i.id === forId; });
+      if (idx > -1) inquiries[idx] = res.data;
+      $("notesStatus").textContent = "Saved";
+    }
+  }
+
+  async function updateStatus(newStatus) {
+    if (!active) return false;
+    var res = await client.from("palm_inquiries").update({ status: newStatus }).eq("id", active.id).select().single();
+    if (res.error) { toast("Couldn't update status: " + res.error.message, "error"); return false; }
+    active = res.data;
+    var idx = inquiries.findIndex(function (i) { return i.id === active.id; });
+    if (idx > -1) inquiries[idx] = active;
+    renderList();
+    toast("Marked " + newStatus.toLowerCase());
+    return true;
+  }
+  function waNumber(mobile) {
+    var d = String(mobile || "").replace(/\D/g, "");
+    if (!d) return null;
+    if (d.length === 10) d = "91" + d;
+    return d;
+  }
+  function openWhatsApp() {
+    if (!active) return;
+    var num = waNumber(active.mobile);
+    if (!num) return toast("No mobile number on this record.", "error");
+    window.open("https://wa.me/" + num, "_blank", "noopener");
+  }
+  function feedbackUrl(id) { return location.href.replace(/[^/]*$/, "").split("#")[0] + "feedback.html?id=" + encodeURIComponent(id); }
+  async function completeAndSendFeedback() {
+    if (!active) return;
+    var target = active, num = waNumber(target.mobile);
+    if (!num) return toast("No mobile number on this record.", "error");
+    var tab = window.open("", "_blank", "noopener");
+    var ok = await updateStatus("Completed");
+    if (!ok) { if (tab) tab.close(); return; }
+    var msg = "Hello " + (target.full_name || "") + ", thank you for your palm reading consultation. " +
+              "Please share your rating and review here: " + feedbackUrl(target.id);
+    var href = "https://wa.me/" + num + "?text=" + encodeURIComponent(msg);
+    if (tab) tab.location.href = href; else window.open(href, "_blank", "noopener");
+  }
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
