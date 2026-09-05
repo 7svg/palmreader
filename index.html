@@ -230,6 +230,10 @@
 
   var MAX_EDGE      = 1400;  // longest side of a stored photo, in px
   var JPEG_QUALITY  = 0.82;
+  // The AI only needs enough detail to judge sharpness. Sending a small copy
+  // for the check instead of the full photo is the biggest speed win there is.
+  var CHECK_EDGE    = 900;
+  var CHECK_QUALITY = 0.6;
   var UPLOAD_TRIES  = 3;
   var CAPTURE_RATIO = 3 / 4;  // must match the aspect-[3/4] preview frame
 
@@ -285,6 +289,8 @@
   var netFailures   = 0;
   var busy          = false;
   var client        = null;
+  var uploadedUrls  = {};   // stepId -> Drive url, filled in as we go
+  var uploadJobs    = {};   // stepId -> in-flight promise
 
   var $ = function (id) { return document.getElementById(id); };
   var video       = $("video"),
@@ -591,7 +597,9 @@
 
   function retakeCurrent() {
     if (busy) return;
-    delete captured[CAPTURE_STEPS[stepIndex].id];
+    var id = CAPTURE_STEPS[stepIndex].id;
+    delete captured[id];
+    delete uploadedUrls[id];   // the old copy in Drive is superseded
     updateStepUI();
   }
 
@@ -632,6 +640,19 @@
     ctx.imageSmoothingQuality = "high";
     ctx.drawImage(source, sx, sy, sw, sh, 0, 0, outW, outH);
     return canvas;
+  }
+
+  // Small copy used only for the AI check. The full-size one still goes to Drive.
+  function shrinkForCheck(canvas) {
+    var outH = Math.min(CHECK_EDGE, canvas.height);
+    var outW = Math.round(outH * (canvas.width / canvas.height));
+    var small = document.createElement("canvas");
+    small.width = outW;
+    small.height = outH;
+    var ctx = small.getContext("2d");
+    ctx.imageSmoothingQuality = "medium";
+    ctx.drawImage(canvas, 0, 0, outW, outH);
+    return small.toDataURL("image/jpeg", CHECK_QUALITY).split(",")[1];
   }
 
   async function captureFromVideo() {
@@ -682,7 +703,6 @@
   async function processCapture(canvas) {
     var step = CAPTURE_STEPS[stepIndex];
     var dataUrl = canvas.toDataURL("image/jpeg", JPEG_QUALITY);
-    var base64  = dataUrl.split(",")[1];
 
     reviewImage.src = dataUrl;
     reviewImage.classList.remove("hidden");
@@ -690,7 +710,10 @@
     setBusy(true, "");
     setWarning("Checking the photo…", "info");
 
-    var result = await verifyImage(base64, step);
+    var startedAt = Date.now();
+    var result = await verifyImage(shrinkForCheck(canvas), step);
+    var seconds = ((Date.now() - startedAt) / 1000).toFixed(1);
+    statusLine.textContent = "Checked in " + seconds + "s";
 
     if (result.networkError) {
       netFailures++;
@@ -698,6 +721,7 @@
         // The check itself is down — don't trap the client. Keep the photo,
         // flag it, and let the reader review it manually.
         captured[step.id] = { dataUrl: dataUrl, blob: await toBlob(canvas), unverified: true };
+        queueUpload(step.id);
         setWarning("Saved without the automatic check.", "ok");
         setTimeout(advance, 700);
         return;
@@ -719,6 +743,7 @@
     }
 
     captured[step.id] = { dataUrl: dataUrl, blob: await toBlob(canvas), unverified: false };
+    queueUpload(step.id);
     setWarning("Looks good", "ok");
     renderDots();
     setTimeout(advance, 600);
@@ -793,6 +818,23 @@
   /* ==========================================================
      UPLOAD — sequential, with retries and honest failure
      ========================================================== */
+  /* Start uploading a photo immediately, in the background, while the client
+     moves on to the next one. By the time they finish photo 10, most are
+     already in Drive. */
+  function queueUpload(stepId) {
+    var item = captured[stepId];
+    if (!item || uploadedUrls[stepId]) return;
+
+    var mobile = $("mobile").value.replace(/\D/g, "");
+    var stamp  = new Date().toISOString().slice(0, 10);
+    var name   = mobile + "_" + stamp + "_" + stepId + ".jpg";
+
+    uploadJobs[stepId] = uploadOne(item.blob, name, mobile, inquiryId)
+      .then(function (url) { uploadedUrls[stepId] = url; })
+      .catch(function (err) { console.error("Background upload failed for " + stepId, err); })
+      .then(function () { delete uploadJobs[stepId]; });
+  }
+
   async function uploadAll() {
     var mobile = $("mobile").value.replace(/\D/g, "");
     var stamp  = new Date().toISOString().slice(0, 10);
@@ -801,11 +843,22 @@
     var done   = 0;
     var total  = CAPTURE_STEPS.length;
 
+    // Most photos uploaded in the background during capture. Let those finish.
+    $("uploadProgress").textContent = "Finishing the last few…";
+    await Promise.all(Object.keys(uploadJobs).map(function (k) { return uploadJobs[k]; }));
+
     for (var i = 0; i < CAPTURE_STEPS.length; i++) {
       var step = CAPTURE_STEPS[i];
       var item = captured[step.id];
-      $("uploadProgress").textContent = "Photo " + (i + 1) + " of " + total + " — " + step.title;
 
+      if (uploadedUrls[step.id]) {          // already done in the background
+        photos[step.id] = uploadedUrls[step.id];
+        done++;
+        $("uploadBar").style.width = Math.round((done / total) * 100) + "%";
+        continue;
+      }
+
+      $("uploadProgress").textContent = "Photo " + (i + 1) + " of " + total + " — " + step.title;
       if (!item) { failed.push(step.title); continue; }
 
       var url = null;
