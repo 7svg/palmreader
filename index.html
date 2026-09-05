@@ -201,9 +201,9 @@
           
           // FORCE the flip to apply every single time the image loads
           if (isLeftHand) {
-            modalRefImage.style.transform = "scaleX(-1)";
-          } else {
             modalRefImage.style.transform = "scaleX(1)";
+          } else {
+            modalRefImage.style.transform = "scaleX(-1)";
           }
         } else {
           modalRefImage.classList.add("hidden");
