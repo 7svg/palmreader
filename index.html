@@ -53,8 +53,8 @@
       </div>
 
       <div>
-        <label for="authEmail" class="block text-xs text-slate-400 mb-1">Email</label>
-        <input id="authEmail" type="email" autocomplete="username"
+        <label for="authMobile" class="block text-xs text-slate-400 mb-1">Mobile number</label>
+        <input id="authMobile" type="tel" inputmode="numeric" autocomplete="tel" placeholder="10 digits"
                class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm focus:border-amber-400 outline-none">
       </div>
       <div>
@@ -95,9 +95,15 @@
           <input id="dob" type="date"
                  class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm focus:border-amber-400 outline-none">
         </div>
+        <div>
+          <label for="birthTime" class="block text-xs text-slate-400 mb-1">Time of birth</label>
+          <input id="birthTime" type="time"
+                 class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm focus:border-amber-400 outline-none">
+        </div>
+      </div>
 
       <div>
-        <label for="birthPlace" class="block text-xs text-slate-400 mb-1">City</label>
+        <label for="birthPlace" class="block text-xs text-slate-400 mb-1">Place of birth</label>
         <input id="birthPlace" type="text" placeholder="City, state"
                class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm focus:border-amber-400 outline-none">
       </div>
@@ -105,11 +111,11 @@
       <div class="grid grid-cols-2 gap-3">
         <div>
           <label for="mobile" class="block text-xs text-slate-400 mb-1">Mobile number</label>
-          <input id="mobile" type="tel" inputmode="numeric" autocomplete="tel" placeholder="10 digits"
-                 class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm focus:border-amber-400 outline-none">
+          <input id="mobile" type="tel" readonly
+                 class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-400 outline-none cursor-not-allowed">
         </div>
         <div>
-          <label for="dominantHand" class="block text-xs text-slate-400 mb-1">Dominant Hand</label>
+          <label for="dominantHand" class="block text-xs text-slate-400 mb-1">Hand to read</label>
           <select id="dominantHand"
                   class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm focus:border-amber-400 outline-none">
             <option value="Right">Right hand</option>
@@ -337,6 +343,7 @@
   var inquiryId     = null;
   var profile       = null;   // the signed-in client's saved details
   var authMode      = "signin";
+  var signedInMobile = "";    // the number behind the account
   var netFailures   = 0;
   var busy          = false;
   var client        = null;
@@ -461,6 +468,21 @@
   /* ==========================================================
      ACCOUNTS
      ========================================================== */
+  /* Supabase needs an email to identify an account. Clients never see one:
+     we build it from their mobile number. Nothing is ever sent to it. */
+  var LOGIN_DOMAIN = "@palmreader.app";
+
+  function normaliseMobile(raw) {
+    var d = String(raw || "").replace(/\D/g, "");
+    if (d.length > 10 && d.indexOf("91") === 0) d = d.slice(2);   // strip +91
+    if (d.length > 10) d = d.slice(-10);                          // keep last 10
+    return d;
+  }
+
+  function loginEmailFor(mobile) {
+    return mobile + LOGIN_DOMAIN;
+  }
+
   function showAuthError(msg) {
     var box = $("authError");
     box.textContent = msg;
@@ -472,8 +494,8 @@
     var signup = authMode === "signup";
     $("authTitle").textContent      = signup ? "Create your account" : "Sign in";
     $("authBlurb").textContent      = signup
-      ? "One account keeps your details, so you never retype them."
-      : "Your details are saved, so you only enter them once.";
+      ? "Your mobile number is your login. Details are saved, so you never retype them."
+      : "Sign in with the mobile number you registered.";
     $("authSubmitBtn").textContent  = signup ? "Create account" : "Sign in";
     $("authToggleBtn").textContent  = signup
       ? "Already have an account? Sign in"
@@ -485,11 +507,13 @@
   async function submitAuth() {
     if (!client) return showAuthError("Couldn't connect. Check your internet and try again.");
 
-    var email    = $("authEmail").value.trim();
+    var mobile   = normaliseMobile($("authMobile").value);
     var password = $("authPassword").value;
 
-    if (!email || email.indexOf("@") === -1) return showAuthError("Please enter a valid email address.");
-    if (password.length < 6)                 return showAuthError("Password must be at least 6 characters.");
+    if (mobile.length !== 10)  return showAuthError("Please enter your 10-digit mobile number.");
+    if (password.length < 6)   return showAuthError("Password must be at least 6 characters.");
+
+    var email = loginEmailFor(mobile);
 
     var btn = $("authSubmitBtn");
     var label = btn.textContent;
@@ -506,20 +530,34 @@
 
     if (res.error) {
       var m = res.error.message || "Something went wrong.";
-      if (/already registered/i.test(m)) m = "That email already has an account. Try signing in.";
-      if (/invalid login/i.test(m))      m = "Email or password is incorrect.";
+      if (/already registered|already been registered/i.test(m)) {
+        m = "This number already has an account. Tap 'Already have an account? Sign in'.";
+      } else if (/invalid login/i.test(m)) {
+        m = "Mobile number or password is incorrect.";
+      } else if (/password/i.test(m) && /short|least/i.test(m)) {
+        m = "Password must be at least 6 characters.";
+      }
       return showAuthError(m);
     }
 
     if (!res.data || !res.data.session) {
-      return showAuthError("Check your email to confirm your account, then sign in.");
+      return showAuthError("Couldn't start your session. Please try signing in again.");
     }
 
+    // A brand new account starts with the number they signed up with.
+    signedInMobile = mobile;
     await afterSignIn();
   }
 
   /* Decide which screen a signed-in client lands on. */
   async function afterSignIn() {
+    if (!signedInMobile) {
+      // Returning client: recover the number from the account we made at signup.
+      var who = await client.auth.getUser();
+      var em  = who && who.data && who.data.user ? (who.data.user.email || "") : "";
+      signedInMobile = normaliseMobile(em.split("@")[0]);
+    }
+
     profile = await loadProfile();
 
     if (!profile) {
@@ -544,19 +582,20 @@
     $("dob").value          = profile ? (profile.dob || "") : "";
     $("birthTime").value    = profile ? (profile.birth_time || "") : "";
     $("birthPlace").value   = profile ? (profile.birth_place || "") : "";
-    $("mobile").value       = profile ? (profile.mobile || "") : "";
+    $("mobile").value       = signedInMobile ||
+                              (profile ? (profile.mobile || "") : "");
     $("dominantHand").value = profile ? (profile.dominant_hand || "Right") : "Right";
     showDetailsError("");
   }
 
   async function saveProfile() {
     var name   = $("fullName").value.trim();
-    var mobile = $("mobile").value.replace(/\D/g, "");
+    var mobile = signedInMobile || normaliseMobile($("mobile").value);
     var dob    = $("dob").value;
     var place  = $("birthPlace").value.trim();
 
-    if (name.length < 2)    return showDetailsError("Please enter your full name.");
-    if (mobile.length < 10) return showDetailsError("Please enter a valid mobile number with at least 10 digits.");
+    if (name.length < 2)     return showDetailsError("Please enter your full name.");
+    if (mobile.length !== 10) return showDetailsError("Your account has no mobile number. Please sign out and sign in again.");
     if (!dob)               return showDetailsError("Please enter your date of birth.");
     if (!place)             return showDetailsError("Please enter your place of birth.");
     showDetailsError("");
