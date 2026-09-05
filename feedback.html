@@ -3,54 +3,79 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#020617">
-  <title>Consultation feedback</title>
+  <meta name="theme-color" content="#F6F2FC">
+  <title>How was your reading?</title>
   <link rel="icon" href="palmlogo.png">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&family=Noto+Sans+Gujarati:wght@400;700&display=swap" rel="stylesheet">
+
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            page:    "#F6F2FC",
+            field:   "#FAF8FE",
+            line:    "#E2D9F3",
+            ink:     { DEFAULT: "#2A1D4F", soft: "#6A5B8C", faint: "#A79BC4" },
+            saffron: { DEFAULT: "#F0A22E", deep: "#D68A12", light: "#FFF1D6" },
+            mehndi:  { DEFAULT: "#3E8E5A", light: "#DFF3E6" },
+            sindoor: { DEFAULT: "#D8434E", light: "#FBE1E3" }
+          },
+          fontFamily: { sans: ['"Plus Jakarta Sans"', '"Noto Sans Gujarati"', "system-ui", "sans-serif"] },
+          boxShadow: {
+            card: "0 10px 30px -12px rgba(42,29,79,0.18)",
+            lift: "0 6px 14px -6px rgba(214,138,18,0.45)"
+          }
+        }
+      }
+    };
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    input, select, textarea, button { font-size: 16px; }
-    :focus-visible { outline: 2px solid #fbbf24; outline-offset: 3px; border-radius: 4px; }
+    body { font-family: "Plus Jakarta Sans", "Noto Sans Gujarati", system-ui, sans-serif; }
+    input, select, textarea, button { font-size: 16px; font-family: inherit; }
+    :focus-visible { outline: 3px solid #F0A22E; outline-offset: 3px; border-radius: 10px; }
   </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex items-center justify-center p-4">
+<body class="bg-page text-ink min-h-screen flex items-center justify-center p-4">
 
-  <div class="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-xl text-center">
-    <img src="palmlogo.png" alt="" class="w-14 h-14 mx-auto rounded-xl" onerror="this.style.display='none'">
+  <div class="max-w-md w-full bg-white border border-line rounded-3xl p-7 space-y-5 shadow-card text-center">
+    <img src="palmlogo.png" alt="" class="w-14 h-14 mx-auto rounded-2xl" onerror="this.style.display='none'">
 
-    <!-- Form -->
-    <div id="formView" class="space-y-4">
+    <div id="formView" class="space-y-5">
       <div>
-        <h1 class="text-xl font-bold text-amber-400">How was your reading?</h1>
-        <p class="text-xs text-slate-400 mt-1">Your rating helps us improve future consultations.</p>
+        <h1 class="text-2xl font-extrabold leading-tight">How was your reading?</h1>
+        <p class="text-sm text-ink-soft mt-1.5">તમારું વાંચન કેવું રહ્યું? Tap a star, then send.</p>
       </div>
 
       <div id="starContainer" class="flex justify-center gap-2 py-1" role="radiogroup" aria-label="Rating out of 5"></div>
-      <p id="ratingLabel" class="text-xs text-slate-400 -mt-2"></p>
+      <p id="ratingLabel" class="text-sm font-bold text-ink-soft -mt-2 min-h-[1.25rem]"></p>
 
       <textarea id="reviewText" rows="4" maxlength="1000"
-                class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm focus:border-amber-400 outline-none"
-                placeholder="What stood out about the session? (optional)"></textarea>
+                class="w-full bg-field border-2 border-line rounded-2xl p-4 text-sm leading-relaxed focus:border-saffron outline-none"
+                placeholder="What stood out? (optional)  ·  શું સારું લાગ્યું? (વૈકલ્પિક)"></textarea>
 
-      <p id="errorBox" class="hidden text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg p-2.5 text-left"></p>
+      <p id="errorBox" class="hidden text-sm text-sindoor bg-sindoor-light border border-sindoor/30 rounded-xl px-4 py-3 font-semibold text-left"></p>
 
       <button id="submitBtn"
-              class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-3 rounded-xl transition disabled:opacity-60">
+              class="w-full bg-saffron hover:bg-saffron-deep text-ink text-lg font-extrabold py-4 rounded-2xl shadow-lift transition disabled:opacity-50">
         Send feedback
       </button>
     </div>
 
-    <!-- Thanks -->
     <div id="thanksView" class="hidden space-y-3 py-4">
-      <div class="w-12 h-12 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto text-xl font-bold">✓</div>
-      <h1 class="text-lg font-bold text-slate-100">Thank you</h1>
-      <p class="text-xs text-slate-400">Your feedback has been recorded.</p>
+      <div class="w-16 h-16 bg-mehndi-light text-mehndi rounded-full flex items-center justify-center mx-auto text-3xl font-extrabold">✓</div>
+      <h1 class="text-2xl font-extrabold">Thank you</h1>
+      <p class="text-sm text-ink-soft">Your feedback has been recorded. આભાર!</p>
     </div>
 
-    <!-- Bad or missing link -->
     <div id="invalidView" class="hidden space-y-3 py-4">
-      <h1 class="text-lg font-bold text-slate-100">This link isn't valid</h1>
-      <p class="text-xs text-slate-400">Feedback links are personal to each consultation. Please use the exact link sent to you on WhatsApp.</p>
+      <h1 class="text-2xl font-extrabold leading-tight">This link isn't valid</h1>
+      <p class="text-sm text-ink-soft">Feedback links are personal to each consultation. Please use the exact link sent to you on WhatsApp.</p>
     </div>
   </div>
 
@@ -60,7 +85,6 @@
 
   var SUPABASE_URL      = "https://simfpaytvkqgknrrhvoj.supabase.co";
   var SUPABASE_ANON_KEY = "sb_publishable_rfqgEkkZhzNEWKCxtPNZog_no_8KR5F";
-
   var LABELS = ["", "Poor", "Fair", "Good", "Very good", "Excellent"];
 
   var $ = function (id) { return document.getElementById(id); };
@@ -68,21 +92,14 @@
 
   var rating = 0;
   var submissionId = new URLSearchParams(location.search).get("id");
-
-  // A valid link carries a UUID. Anything else is a broken or hand-typed link.
   var isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(submissionId || "");
-  if (!isUuid) {
-    $("formView").classList.add("hidden");
-    $("invalidView").classList.remove("hidden");
-    return;
-  }
+  if (!isUuid) { $("formView").classList.add("hidden"); $("invalidView").classList.remove("hidden"); return; }
 
-  /* ---------- stars ---------- */
   var container = $("starContainer");
   for (var i = 1; i <= 5; i++) {
     var b = document.createElement("button");
     b.type = "button";
-    b.className = "text-4xl leading-none transition text-slate-600 hover:scale-110";
+    b.className = "text-5xl leading-none transition text-line hover:scale-110";
     b.textContent = "★";
     b.setAttribute("role", "radio");
     b.setAttribute("aria-checked", "false");
@@ -96,59 +113,34 @@
     rating = r;
     Array.prototype.forEach.call(container.children, function (star, idx) {
       var on = idx < r;
-      star.className = "text-4xl leading-none transition hover:scale-110 " + (on ? "text-amber-400" : "text-slate-600");
+      star.className = "text-5xl leading-none transition hover:scale-110 " + (on ? "text-saffron" : "text-line");
       star.setAttribute("aria-checked", on && idx === r - 1 ? "true" : "false");
     });
     $("ratingLabel").textContent = LABELS[r] || "";
     showError("");
   }
+  function showError(msg) { var box = $("errorBox"); box.textContent = msg; box.classList.toggle("hidden", !msg); }
 
-  function showError(msg) {
-    var box = $("errorBox");
-    box.textContent = msg;
-    box.classList.toggle("hidden", !msg);
-  }
-
-  /* ---------- submit ---------- */
   $("submitBtn").addEventListener("click", submitReview);
 
   async function submitReview() {
     if (!rating) return showError("Please tap a star rating first.");
     if (!client) return showError("Couldn't connect. Check your internet and try again.");
-
     var btn = $("submitBtn");
-    btn.disabled = true;
-    btn.textContent = "Sending…";
-    showError("");
+    btn.disabled = true; btn.textContent = "Sending…"; showError("");
 
-    var res = await client.rpc("submit_feedback", {
-      p_id:     submissionId,
-      p_rating: rating,
-      p_review: $("reviewText").value.trim() || null
-    });
+    var res = await client.rpc("submit_feedback", { p_id: submissionId, p_rating: rating, p_review: $("reviewText").value.trim() || null });
 
     if (res.error) {
-      btn.disabled = false;
-      btn.textContent = "Send feedback";
-      showError(res.error.message || "Something went wrong. Please try again.");
-      return;
+      btn.disabled = false; btn.textContent = "Send feedback";
+      return showError(res.error.message || "Something went wrong. Please try again.");
     }
-
-    if (res.data === "already_submitted") {
-      $("formView").classList.add("hidden");
-      $("thanksView").classList.remove("hidden");
-      $("thanksView").querySelector("p").textContent = "We already have your feedback for this consultation.";
-      return;
-    }
-
-    if (res.data === "not_found") {
-      $("formView").classList.add("hidden");
-      $("invalidView").classList.remove("hidden");
-      return;
-    }
-
+    if (res.data === "not_found") { $("formView").classList.add("hidden"); $("invalidView").classList.remove("hidden"); return; }
     $("formView").classList.add("hidden");
     $("thanksView").classList.remove("hidden");
+    if (res.data === "already_submitted") {
+      $("thanksView").querySelector("p").textContent = "We already have your feedback for this consultation.";
+    }
   }
 })();
 </script>
