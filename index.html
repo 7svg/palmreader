@@ -41,9 +41,43 @@
       <p class="text-xs text-slate-400 mt-0.5">Ten guided photos, checked as you go.</p>
     </header>
 
-    <!-- ============ STEP 1: DETAILS ============ -->
-    <section id="step-details" class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
-      <h2 class="text-sm font-semibold text-slate-200 border-b border-slate-800 pb-2">Your details</h2>
+    <!-- ============ SIGN IN ============ -->
+    <section id="step-auth" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+      <div>
+        <h2 id="authTitle" class="text-sm font-semibold text-slate-200">Sign in</h2>
+        <p id="authBlurb" class="text-xs text-slate-400 mt-1">Your details are saved, so you only enter them once.</p>
+      </div>
+
+      <div>
+        <label for="authEmail" class="block text-xs text-slate-400 mb-1">Email</label>
+        <input id="authEmail" type="email" autocomplete="username"
+               class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm focus:border-amber-400 outline-none">
+      </div>
+      <div>
+        <label for="authPassword" class="block text-xs text-slate-400 mb-1">Password</label>
+        <input id="authPassword" type="password" autocomplete="current-password"
+               class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm focus:border-amber-400 outline-none">
+        <p class="text-[11px] text-slate-500 mt-1">At least 6 characters.</p>
+      </div>
+
+      <p id="authError" class="hidden text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg p-2.5"></p>
+
+      <button id="authSubmitBtn"
+              class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-3 rounded-xl transition disabled:opacity-60">
+        Sign in
+      </button>
+      <button id="authToggleBtn" type="button"
+              class="w-full text-xs text-slate-400 hover:text-white underline py-1">
+        New here? Create an account
+      </button>
+    </section>
+
+    <!-- ============ DETAILS (first time only) ============ -->
+    <section id="step-profile" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+      <div class="border-b border-slate-800 pb-2">
+        <h2 class="text-sm font-semibold text-slate-200">Your details</h2>
+        <p class="text-xs text-slate-400 mt-1">Entered once. We'll remember them next time.</p>
+      </div>
 
       <div>
         <label for="fullName" class="block text-xs text-slate-400 mb-1">Full name</label>
@@ -88,10 +122,27 @@
 
       <p id="detailsError" class="hidden text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg p-2.5"></p>
 
+      <button id="saveProfileBtn"
+              class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-3 rounded-xl transition disabled:opacity-60">
+        Save and continue
+      </button>
+    </section>
+
+    <!-- ============ READY (returning client) ============ -->
+    <section id="step-ready" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+      <div>
+        <h2 id="readyGreeting" class="text-base font-bold text-slate-100"></h2>
+        <p id="readySummary" class="text-xs text-slate-400 mt-1 leading-relaxed"></p>
+      </div>
+
       <button id="startBtn"
-              class="w-full bg-amber-500 hover:bg-amber-600 active:bg-amber-600 text-slate-950 font-bold py-3 rounded-xl transition disabled:opacity-60">
+              class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-3 rounded-xl transition disabled:opacity-60">
         Start photo capture
       </button>
+      <div class="flex justify-between">
+        <button id="editProfileBtn" type="button" class="text-xs text-slate-400 hover:text-white underline py-1">Edit my details</button>
+        <button id="signOutBtn" type="button" class="text-xs text-slate-400 hover:text-white underline py-1">Sign out</button>
+      </div>
       <p class="text-[11px] text-slate-500 text-center">Your photos are stored privately and used only for your reading.</p>
     </section>
 
@@ -286,6 +337,8 @@
   var useLiveCamera = true;
   var isLeftHand    = false;
   var inquiryId     = null;
+  var profile       = null;   // the signed-in client's saved details
+  var authMode      = "signin";
   var netFailures   = 0;
   var busy          = false;
   var client        = null;
@@ -316,6 +369,19 @@
      WIRING
      ========================================================== */
   $("startBtn").addEventListener("click", startCapture);
+  $("authSubmitBtn").addEventListener("click", submitAuth);
+  $("authToggleBtn").addEventListener("click", toggleAuthMode);
+  $("authPassword").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") submitAuth();
+  });
+  $("saveProfileBtn").addEventListener("click", saveProfile);
+  $("editProfileBtn").addEventListener("click", function () {
+    fillProfileForm();
+    show("step-profile");
+  });
+  $("signOutBtn").addEventListener("click", function () {
+    client.auth.signOut().then(function () { location.reload(); });
+  });
   $("helpBtn").addEventListener("click", function () { toggleHelp(true); });
   $("closeHelpBtn").addEventListener("click", function () { toggleHelp(false); });
   $("helpModal").addEventListener("click", function (e) {
@@ -362,7 +428,8 @@
      SCREEN HELPERS
      ========================================================== */
   function show(sectionId) {
-    ["step-details", "step-camera", "step-uploading", "step-complete", "step-failed"]
+    ["step-auth", "step-profile", "step-ready", "step-camera",
+     "step-uploading", "step-complete", "step-failed"]
       .forEach(function (id) { $(id).classList.toggle("hidden", id !== sectionId); });
     window.scrollTo(0, 0);
   }
@@ -394,7 +461,141 @@
   }
 
   /* ==========================================================
-     STEP 1 — DETAILS
+     ACCOUNTS
+     ========================================================== */
+  function showAuthError(msg) {
+    var box = $("authError");
+    box.textContent = msg;
+    box.classList.toggle("hidden", !msg);
+  }
+
+  function toggleAuthMode() {
+    authMode = authMode === "signin" ? "signup" : "signin";
+    var signup = authMode === "signup";
+    $("authTitle").textContent      = signup ? "Create your account" : "Sign in";
+    $("authBlurb").textContent      = signup
+      ? "One account keeps your details, so you never retype them."
+      : "Your details are saved, so you only enter them once.";
+    $("authSubmitBtn").textContent  = signup ? "Create account" : "Sign in";
+    $("authToggleBtn").textContent  = signup
+      ? "Already have an account? Sign in"
+      : "New here? Create an account";
+    $("authPassword").setAttribute("autocomplete", signup ? "new-password" : "current-password");
+    showAuthError("");
+  }
+
+  async function submitAuth() {
+    if (!client) return showAuthError("Couldn't connect. Check your internet and try again.");
+
+    var email    = $("authEmail").value.trim();
+    var password = $("authPassword").value;
+
+    if (!email || email.indexOf("@") === -1) return showAuthError("Please enter a valid email address.");
+    if (password.length < 6)                 return showAuthError("Password must be at least 6 characters.");
+
+    var btn = $("authSubmitBtn");
+    var label = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "Please wait…";
+    showAuthError("");
+
+    var res = authMode === "signup"
+      ? await client.auth.signUp({ email: email, password: password })
+      : await client.auth.signInWithPassword({ email: email, password: password });
+
+    btn.disabled = false;
+    btn.textContent = label;
+
+    if (res.error) {
+      var m = res.error.message || "Something went wrong.";
+      if (/already registered/i.test(m)) m = "That email already has an account. Try signing in.";
+      if (/invalid login/i.test(m))      m = "Email or password is incorrect.";
+      return showAuthError(m);
+    }
+
+    if (!res.data || !res.data.session) {
+      return showAuthError("Check your email to confirm your account, then sign in.");
+    }
+
+    await afterSignIn();
+  }
+
+  /* Decide which screen a signed-in client lands on. */
+  async function afterSignIn() {
+    profile = await loadProfile();
+
+    if (!profile) {
+      fillProfileForm();
+      return show("step-profile");
+    }
+    showReady();
+  }
+
+  async function loadProfile() {
+    var res = await client.from("palm_profiles").select("*").maybeSingle();
+    if (res.error) { console.error(res.error); return null; }
+    return res.data || null;
+  }
+
+  function fillProfileForm() {
+    $("fullName").value     = profile ? (profile.full_name || "") : "";
+    $("dob").value          = profile ? (profile.dob || "") : "";
+    $("birthTime").value    = profile ? (profile.birth_time || "") : "";
+    $("birthPlace").value   = profile ? (profile.birth_place || "") : "";
+    $("mobile").value       = profile ? (profile.mobile || "") : "";
+    $("dominantHand").value = profile ? (profile.dominant_hand || "Right") : "Right";
+    showDetailsError("");
+  }
+
+  async function saveProfile() {
+    var name   = $("fullName").value.trim();
+    var mobile = (profile && profile.mobile ? profile.mobile : "").replace(/\D/g, "");
+    var dob    = $("dob").value;
+    var place  = $("birthPlace").value.trim();
+
+    if (name.length < 2)    return showDetailsError("Please enter your full name.");
+    if (mobile.length < 10) return showDetailsError("Please enter a valid mobile number with at least 10 digits.");
+    if (!dob)               return showDetailsError("Please enter your date of birth.");
+    if (!place)             return showDetailsError("Please enter your place of birth.");
+    showDetailsError("");
+
+    var btn = $("saveProfileBtn");
+    btn.disabled = true;
+    btn.textContent = "Saving…";
+
+    var res = await client.rpc("save_profile", {
+      p_full_name:     name,
+      p_dob:           dob,
+      p_birth_time:    $("birthTime").value || null,
+      p_birth_place:   place,
+      p_mobile:        mobile,
+      p_dominant_hand: $("dominantHand").value
+    });
+
+    btn.disabled = false;
+    btn.textContent = "Save and continue";
+
+    if (res.error) {
+      console.error(res.error);
+      return showDetailsError(res.error.message || "Couldn't save. Check your connection and try again.");
+    }
+
+    profile = await loadProfile();
+    showReady();
+  }
+
+  function showReady() {
+    var first = (profile.full_name || "").split(" ")[0];
+    $("readyGreeting").textContent = "Hello " + first;
+    $("readySummary").textContent =
+      profile.full_name + " · " + (profile.dominant_hand || "Right").toLowerCase() + " hand · " +
+      (profile.mobile || "") + (profile.birth_place ? " · " + profile.birth_place : "");
+    isLeftHand = profile.dominant_hand === "Left";
+    show("step-ready");
+  }
+
+  /* ==========================================================
+     START A READING
      ========================================================== */
   function showDetailsError(msg) {
     var box = $("detailsError");
@@ -403,18 +604,9 @@
   }
 
   async function startCapture() {
-    var name   = $("fullName").value.trim();
-    var mobile = $("mobile").value.replace(/\D/g, "");
-    var dob    = $("dob").value;
-    var place  = $("birthPlace").value.trim();
+    if (!profile) return showReady();
 
-    if (name.length < 2)   return showDetailsError("Please enter your full name.");
-    if (mobile.length < 10) return showDetailsError("Please enter a valid mobile number with at least 10 digits.");
-    if (!dob)              return showDetailsError("Please enter your date of birth.");
-    if (!place)            return showDetailsError("Please enter your place of birth.");
-    showDetailsError("");
-
-    isLeftHand = $("dominantHand").value === "Left";
+    isLeftHand = profile.dominant_hand === "Left";
 
     var btn = $("startBtn");
     btn.disabled = true;
@@ -422,39 +614,24 @@
 
     // Create the Supabase record FIRST, so a half-finished session is still visible.
     try {
-      inquiryId = await createInquiry({
-        full_name:     name,
-        dob:           dob,
-        birth_time:    $("birthTime").value || null,
-        birth_place:   place,
-        mobile:        mobile,
-        dominant_hand: $("dominantHand").value
-      });
+      var res = await client.rpc("create_inquiry");
+      if (res.error) throw res.error;
+      inquiryId = res.data;
     } catch (err) {
       console.error(err);
       btn.disabled = false;
       btn.textContent = "Start photo capture";
-      return showDetailsError("Couldn't reach the server. Check your connection and try again.");
+      alert(err.message || "Couldn't reach the server. Check your connection and try again.");
+      return;
     }
+
+    btn.disabled = false;
+    btn.textContent = "Start photo capture";
 
     show("step-camera");
     renderDots();
     await initCamera();
     updateStepUI();
-  }
-
-  async function createInquiry(payload) {
-    if (!client) throw new Error("Supabase client unavailable");
-    var res = await client.rpc("create_inquiry", {
-      p_full_name:     payload.full_name,
-      p_dob:           payload.dob,
-      p_birth_time:    payload.birth_time,
-      p_birth_place:   payload.birth_place,
-      p_mobile:        payload.mobile,
-      p_dominant_hand: payload.dominant_hand
-    });
-    if (res.error) throw res.error;
-    return res.data;
   }
 
   /* ==========================================================
@@ -831,7 +1008,7 @@
     var item = captured[stepId];
     if (!item || uploadedUrls[stepId]) return;
 
-    var mobile = $("mobile").value.replace(/\D/g, "");
+    var mobile = (profile && profile.mobile ? profile.mobile : "").replace(/\D/g, "");
     var stamp  = new Date().toISOString().slice(0, 10);
     var name   = mobile + "_" + stamp + "_" + stepId + ".jpg";
 
@@ -856,7 +1033,7 @@
   }
 
   async function uploadAll() {
-    var mobile = $("mobile").value.replace(/\D/g, "");
+    var mobile = (profile && profile.mobile ? profile.mobile : "").replace(/\D/g, "");
     var stamp  = new Date().toISOString().slice(0, 10);
     var photos = {};
     var failed = [];
@@ -958,6 +1135,28 @@
   }
 
   function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  /* ==========================================================
+     BOOT
+     An existing session means a returning client: they skip
+     straight past the login and the details form.
+     ========================================================== */
+  (async function boot() {
+    if (!client) {
+      show("step-auth");
+      return showAuthError("Couldn't connect. Check your internet and try again.");
+    }
+    try {
+      var res = await client.auth.getSession();
+      if (res.data && res.data.session) {
+        await afterSignIn();
+        return;
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    show("step-auth");
+  })();
 })();
 </script>
 </body>
