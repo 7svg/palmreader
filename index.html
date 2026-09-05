@@ -74,6 +74,7 @@
               class="w-full text-xs text-slate-400 hover:text-white underline py-1">
         New here? Create an account
       </button>
+      <p id="versionTag" class="text-[10px] text-slate-700 text-center"></p>
     </section>
 
     <!-- ============ DETAILS (first time only) ============ -->
@@ -95,11 +96,11 @@
           <input id="dob" type="date"
                  class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm focus:border-amber-400 outline-none">
         </div>
-
-      <div>
-        <label for="birthPlace" class="block text-xs text-slate-400 mb-1">Place</label>
-        <input id="birthPlace" type="text" placeholder="City, state"
-               class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm focus:border-amber-400 outline-none">
+        <div>
+          <label for="birthPlace" class="block text-xs text-slate-400 mb-1">Place</label>
+          <input id="birthPlace" type="text" placeholder="City"
+                 class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm focus:border-amber-400 outline-none">
+        </div>
       </div>
 
       <div class="grid grid-cols-2 gap-3">
@@ -109,7 +110,7 @@
                  class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-400 outline-none cursor-not-allowed">
         </div>
         <div>
-          <label for="dominantHand" class="block text-xs text-slate-400 mb-1">Dominant Hand</label>
+          <label for="dominantHand" class="block text-xs text-slate-400 mb-1">Dominant hand</label>
           <select id="dominantHand"
                   class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm focus:border-amber-400 outline-none">
             <option value="Right">Right hand</option>
@@ -308,6 +309,7 @@
   var SUPABASE_URL      = "https://simfpaytvkqgknrrhvoj.supabase.co";
   var SUPABASE_ANON_KEY = "sb_publishable_rfqgEkkZhzNEWKCxtPNZog_no_8KR5F";
 
+  var APP_VERSION   = "2026-09-05-g";   // shown on the sign-in screen
   var MAX_EDGE      = 1400;  // longest side of a stored photo, in px
   var JPEG_QUALITY  = 0.82;
   // The AI only needs enough detail to judge sharpness. Sending a small copy
@@ -631,8 +633,17 @@
     if (!signedInMobile) {
       // Returning client: recover the number from the account we made at signup.
       var who = await client.auth.getUser();
-      var em  = who && who.data && who.data.user ? (who.data.user.email || "") : "";
-      signedInMobile = normaliseMobile(em.split("@")[0]);
+
+      // A stale or revoked token comes back as an error here. Clear it and
+      // send them to the sign-in screen rather than carrying on half-broken.
+      if (!who || who.error || !who.data || !who.data.user) {
+        console.warn("Session no longer valid, clearing it.");
+        try { await client.auth.signOut(); } catch (e) {}
+        show("step-auth");
+        return showAuthError("Your session expired. Please sign in again.");
+      }
+
+      signedInMobile = normaliseMobile((who.data.user.email || "").split("@")[0]);
     }
 
     profile = await loadProfile();
@@ -654,27 +665,37 @@
     return res.data || null;
   }
 
+  function getField(id, fallback) {
+    var el = $(id);
+    return el ? el.value : (fallback === undefined ? "" : fallback);
+  }
+
+  function setField(id, value) {
+    var el = $(id);
+    if (el) el.value = value;
+    else console.warn("Missing form field: " + id);
+  }
+
   function fillProfileForm() {
-    $("fullName").value     = profile ? (profile.full_name || "") : "";
-    $("dob").value          = profile ? (profile.dob || "") : "";
-    $("birthTime").value    = profile ? (profile.birth_time || "") : "";
-    $("birthPlace").value   = profile ? (profile.birth_place || "") : "";
-    $("mobile").value       = signedInMobile ||
-                              (profile ? (profile.mobile || "") : "");
-    $("dominantHand").value = profile ? (profile.dominant_hand || "Right") : "Right";
+    setField("fullName",     profile ? (profile.full_name || "") : "");
+    setField("dob",          profile ? (profile.dob || "") : "");
+    setField("birthTime",    profile ? (profile.birth_time || "") : "");
+    setField("birthPlace",   profile ? (profile.birth_place || "") : "");
+    setField("mobile",       signedInMobile || (profile ? (profile.mobile || "") : ""));
+    setField("dominantHand", profile ? (profile.dominant_hand || "Right") : "Right");
     showDetailsError("");
   }
 
   async function saveProfile() {
-    var name   = $("fullName").value.trim();
-    var mobile = signedInMobile || normaliseMobile($("mobile").value);
-    var dob    = $("dob").value;
-    var place  = $("birthPlace").value.trim();
+    var name   = getField("fullName").trim();
+    var mobile = signedInMobile || normaliseMobile(getField("mobile"));
+    var dob    = getField("dob");
+    var place  = getField("birthPlace").trim();
 
     if (name.length < 2)     return showDetailsError("Please enter your full name.");
     if (mobile.length !== 10) return showDetailsError("Your account has no mobile number. Please sign out and sign in again.");
-    if (!dob)               return showDetailsError("Please enter your date of birth.");
-    if (!place)             return showDetailsError("Please enter your place of birth.");
+    if ($("dob")        && !dob)   return showDetailsError("Please enter your date of birth.");
+    if ($("birthPlace") && !place) return showDetailsError("Please enter your place.");
     showDetailsError("");
 
     var btn = $("saveProfileBtn");
@@ -684,10 +705,10 @@
     var res = await client.rpc("save_profile", {
       p_full_name:     name,
       p_dob:           dob,
-      p_birth_time:    $("birthTime").value || null,
+      p_birth_time:    getField("birthTime") || null,
       p_birth_place:   place,
       p_mobile:        mobile,
-      p_dominant_hand: $("dominantHand").value
+      p_dominant_hand: getField("dominantHand", "Right")
     });
 
     btn.disabled = false;
@@ -1269,6 +1290,10 @@
      straight past the login and the details form.
      ========================================================== */
   (async function boot() {
+    var tag = $("versionTag");
+    if (tag) tag.textContent = "v" + APP_VERSION;
+    console.log("Palm Reader " + APP_VERSION);
+
     if (!client) {
       show("step-auth");
       return showAuthError("Couldn't connect. Check your internet and try again.");
@@ -1280,7 +1305,8 @@
         return;
       }
     } catch (err) {
-      console.error(err);
+      console.error("Couldn't restore session:", err);
+      try { await client.auth.signOut(); } catch (e) {}
     }
     show("step-auth");
   })();
