@@ -221,7 +221,8 @@
         1. NO HAND: If there is no human hand (e.g., face, leg, object), return {"valid": false, "reason": "No hand detected. Please try again."}.
         2. BLURRY LINES: The exact lines of the palm or fingerprint MUST be clearly visible. If they are blurry, out of focus, or hidden in shadows, return {"valid": false, "reason": "Lines are blurry. Tap to focus."}.
         3. WRONG POSE: If the hand angle does not match "${stepInfo.title}", return {"valid": false, "reason": "Incorrect hand angle."}.
-        
+        4. HAND: if the user has selected dominant hand as left then the image will be of left hand, so allow both left and right hand images, return {"valid": true}.
+
         Return ONLY valid JSON: {"valid": true} OR {"valid": false, "reason": "Short reason"}. No markdown.`;
 
         try {
