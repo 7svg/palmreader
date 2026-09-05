@@ -1,17 +1,19 @@
 {
   "name": "Palm Reader",
   "short_name": "Palm Reader",
-  "description": "Guided palm and fingerprint photo capture for your palmistry consultation.",
+  "description": "Guided palm and fingerprint photos for your palmistry consultation, in English or Gujarati.",
   "id": "/palmreader/",
   "start_url": "/palmreader/",
   "scope": "/palmreader/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#020617",
-  "theme_color": "#020617",
+  "background_color": "#F6F2FC",
+  "theme_color": "#F6F2FC",
   "lang": "en",
   "dir": "ltr",
-  "categories": ["lifestyle"],
+  "categories": [
+    "lifestyle"
+  ],
   "icons": [
     {
       "src": "icon-192.png",
