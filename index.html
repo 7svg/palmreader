@@ -2,316 +2,890 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Palm & Finger Analysis Portal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1">
+  <meta name="theme-color" content="#020617">
+  <title>Palm &amp; Finger Analysis</title>
+  <link rel="icon" href="palmlogo.png">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    @keyframes pulse-red {
-      0%, 100% { background-color: rgba(239, 68, 68, 0.9); }
-      50% { background-color: rgba(185, 28, 28, 0.9); }
+    html, body { height: 100%; }
+    body {
+      min-height: 100dvh;
+      padding-bottom: env(safe-area-inset-bottom);
+      -webkit-text-size-adjust: 100%;
+      overscroll-behavior-y: contain;
     }
-    .animate-pulse-red { animation: pulse-red 1.5s infinite; }
+    /* Stop iOS Safari from zooming when a field is focused */
+    input, select, textarea, button { font-size: 16px; }
+    @keyframes pulse-red {
+      0%, 100% { background-color: rgba(185, 28, 28, .95); }
+      50%      { background-color: rgba(239, 68, 68, .95); }
+    }
+    .animate-pulse-red { animation: pulse-red 1.6s infinite; }
+    @media (prefers-reduced-motion: reduce) {
+      .animate-pulse-red, .animate-pulse, .animate-spin { animation: none !important; }
+    }
+    :focus-visible { outline: 2px solid #fbbf24; outline-offset: 2px; }
+    .spin { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col items-center p-4">
+<body class="bg-slate-950 text-slate-100 flex flex-col items-center p-4">
 
-  <div class="max-w-md w-full my-auto space-y-4 relative">
-    <header class="text-center py-2">
-      <h1 class="text-xl font-bold tracking-tight text-amber-400">Palm & Finger Analysis</h1>
-      <p class="text-xs text-slate-400">AI-validated capture portal.</p>
+  <div class="max-w-md w-full space-y-4">
+
+    <header class="text-center pt-1 pb-2">
+      <img src="palmlogo.png" alt="" class="w-14 h-14 mx-auto rounded-xl mb-2" onerror="this.style.display='none'">
+      <h1 class="text-xl font-bold tracking-tight text-amber-400">Palm &amp; Finger Analysis</h1>
+      <p class="text-xs text-slate-400 mt-0.5">Ten guided photos, checked as you go.</p>
     </header>
 
-    <!-- STEP 1: Personal Details -->
-    <div id="step-details" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
-      <h2 class="text-md font-semibold text-slate-200 border-b border-slate-800 pb-2">1. Personal Information</h2>
-      
+    <!-- ============ STEP 1: DETAILS ============ -->
+    <section id="step-details" class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+      <h2 class="text-sm font-semibold text-slate-200 border-b border-slate-800 pb-2">Your details</h2>
+
       <div>
-        <label class="block text-xs text-slate-400 mb-1">Full Name</label>
-        <input id="fullName" type="text" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm focus:border-amber-400 outline-none" required>
+        <label for="fullName" class="block text-xs text-slate-400 mb-1">Full name</label>
+        <input id="fullName" type="text" autocomplete="name"
+               class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm focus:border-amber-400 outline-none">
       </div>
 
       <div class="grid grid-cols-2 gap-3">
         <div>
-          <label class="block text-xs text-slate-400 mb-1">Date of Birth</label>
-          <input id="dob" type="date" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm focus:border-amber-400 outline-none" required>
+          <label for="dob" class="block text-xs text-slate-400 mb-1">Date of birth</label>
+          <input id="dob" type="date"
+                 class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm focus:border-amber-400 outline-none">
         </div>
         <div>
-          <label class="block text-xs text-slate-400 mb-1">Dominant Hand</label>
-          <select id="dominantHand" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm focus:border-amber-400 outline-none">
-            <option value="Right">Right Hand</option>
-            <option value="Left">Left Hand</option>
-          </select>
+          <label for="birthTime" class="block text-xs text-slate-400 mb-1">Time of birth</label>
+          <input id="birthTime" type="time"
+                 class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm focus:border-amber-400 outline-none">
         </div>
       </div>
 
       <div>
-        <label class="block text-xs text-slate-400 mb-1">Mobile Number</label>
-        <input id="mobile" type="tel" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm focus:border-amber-400 outline-none" required>
+        <label for="birthPlace" class="block text-xs text-slate-400 mb-1">Place of birth</label>
+        <input id="birthPlace" type="text" placeholder="City, state"
+               class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm focus:border-amber-400 outline-none">
       </div>
 
-      <button id="startBtn" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-3 rounded-xl transition mt-2">
-        Continue to Photo Capture &rarr;
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label for="mobile" class="block text-xs text-slate-400 mb-1">Mobile number</label>
+          <input id="mobile" type="tel" inputmode="numeric" autocomplete="tel" placeholder="10 digits"
+                 class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm focus:border-amber-400 outline-none">
+        </div>
+        <div>
+          <label for="dominantHand" class="block text-xs text-slate-400 mb-1">Hand to read</label>
+          <select id="dominantHand"
+                  class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm focus:border-amber-400 outline-none">
+            <option value="Right">Right hand</option>
+            <option value="Left">Left hand</option>
+          </select>
+        </div>
+      </div>
+
+      <p id="detailsError" class="hidden text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg p-2.5"></p>
+
+      <button id="startBtn"
+              class="w-full bg-amber-500 hover:bg-amber-600 active:bg-amber-600 text-slate-950 font-bold py-3 rounded-xl transition disabled:opacity-60">
+        Start photo capture
       </button>
-    </div>
+      <p class="text-[11px] text-slate-500 text-center">Your photos are stored privately and used only for your reading.</p>
+    </section>
 
-    <!-- STEP 2: Camera Capture Interface -->
-    <div id="step-camera" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col items-center">
-      
-      <div class="w-full flex items-start justify-between mb-3 px-2">
-        <div class="w-6"></div> 
-        <div class="text-center flex-1">
-          <span id="stepCounter" class="text-xs bg-amber-500/20 text-amber-400 px-2.5 py-1 rounded-full font-mono uppercase">Photo 1 of 10</span>
-          <h3 id="stepTitle" class="font-bold text-base mt-2 text-slate-100">Full Open Palm</h3>
-          <p id="stepGuide" class="text-xs text-slate-400 mt-0.5">Check help [?] for reference.</p>
+    <!-- ============ STEP 2: CAPTURE ============ -->
+    <section id="step-camera" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl">
+
+      <div class="w-full flex items-start justify-between gap-2 mb-3">
+        <div class="w-8 shrink-0"></div>
+        <div class="text-center flex-1 min-w-0">
+          <span id="stepCounter" class="text-[11px] bg-amber-500/20 text-amber-400 px-2.5 py-1 rounded-full font-mono">Photo 1 of 10</span>
+          <h2 id="stepTitle" class="font-bold text-base mt-2 text-slate-100">Full open palm</h2>
+          <p id="stepGuide" class="text-xs text-slate-400 mt-0.5">Tap ? to see the reference pose.</p>
         </div>
-        <button onclick="toggleHelp(true)" class="w-7 h-7 bg-amber-500 rounded-full text-slate-950 font-bold text-sm hover:bg-amber-400 transition flex items-center justify-center shadow-[0_0_10px_rgba(245,158,11,0.5)]">?</button>
+        <button id="helpBtn" type="button" aria-label="Show reference pose"
+                class="w-8 h-8 shrink-0 bg-amber-500 rounded-full text-slate-950 font-bold hover:bg-amber-400 transition flex items-center justify-center">?</button>
       </div>
 
-      <div class="relative w-full aspect-[3/4] bg-black rounded-xl overflow-hidden flex items-center justify-center border border-slate-800">
-        <video id="video" autoplay playsinline webkit-playsinline muted class="absolute inset-0 w-full h-full object-cover z-0"></video>
-        
-        <div id="fingerprintOverlay" class="hidden absolute inset-0 flex flex-col items-center justify-center bg-black/40 text-center p-6 z-10">
+      <!-- progress dots -->
+      <div id="progressDots" class="flex justify-center gap-1.5 mb-3"></div>
+
+      <!-- Preview frame. Everything captured is exactly what shows inside this box. -->
+      <div id="previewFrame" class="relative w-full aspect-[3/4] bg-black rounded-xl overflow-hidden border border-slate-800">
+        <video id="video" autoplay playsinline webkit-playsinline muted
+               class="absolute inset-0 w-full h-full object-cover z-0"></video>
+
+        <img id="reviewImage" alt="Captured photo" class="hidden absolute inset-0 w-full h-full object-cover z-10">
+
+        <div id="fingerprintOverlay"
+             class="hidden absolute inset-0 flex flex-col items-center justify-center bg-black/35 text-center p-6 z-20 pointer-events-none">
           <div class="w-16 h-16 border-2 border-amber-400 rounded-full mb-4 animate-pulse"></div>
-          <p class="text-amber-400 font-bold text-lg">Center <span id="fingerName"></span> Here</p>
-          <p class="text-slate-200 text-sm mt-2">Ensure lines are brightly lit and clearly focused.</p>
+          <p class="text-amber-400 font-bold text-base">Centre your <span id="fingerName"></span> here</p>
+          <p class="text-slate-200 text-xs mt-2">Hold still and keep the ridges brightly lit.</p>
         </div>
 
-        <div id="aiWarning" class="hidden absolute top-3 z-30 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg transition animate-pulse-red text-center mx-4">
-          Analyzing...
+        <div id="cameraOff"
+             class="hidden absolute inset-0 flex flex-col items-center justify-center text-center p-6 z-20 bg-slate-950">
+          <p class="text-slate-300 text-sm font-semibold">Using your phone's camera app</p>
+          <p class="text-slate-500 text-xs mt-2">Live preview isn't available here, so each photo opens the camera directly.</p>
+        </div>
+
+        <div id="aiWarning"
+             class="hidden absolute top-3 left-3 right-3 z-30 text-white text-xs font-semibold px-3 py-2 rounded-lg shadow-lg text-center">
         </div>
       </div>
 
-      <div class="flex items-center justify-between w-full mt-4 px-4">
-        <button id="retakeBtn" class="text-xs text-slate-400 hover:text-white underline disabled:opacity-50">Retake</button>
-        <button id="snapBtn" class="w-16 h-16 rounded-full border-4 border-amber-400 flex items-center justify-center p-1 focus:scale-95 transition disabled:opacity-50">
-          <div class="w-full h-full bg-amber-400 rounded-full disabled:bg-slate-600"></div>
+      <!-- Live-camera controls -->
+      <div id="liveControls" class="flex items-center justify-between w-full mt-4 px-2">
+        <button id="backBtn" type="button" class="text-xs text-slate-400 hover:text-white underline disabled:opacity-40 w-20 text-left">Previous</button>
+        <button id="snapBtn" type="button" aria-label="Take photo"
+                class="w-16 h-16 rounded-full border-4 border-amber-400 flex items-center justify-center p-1 active:scale-95 transition disabled:opacity-40">
+          <div class="w-full h-full bg-amber-400 rounded-full"></div>
         </button>
-        <span class="text-xs text-slate-500">AI Guard</span>
+        <button id="retakeBtn" type="button" class="text-xs text-slate-400 hover:text-white underline disabled:opacity-40 w-20 text-right">Retake</button>
       </div>
-    </div>
 
-    <!-- DYNAMIC HELP INSTRUCTION MODAL -->
-    <div id="helpModal" class="hidden absolute inset-0 z-50 bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-4">
-      <div class="bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4 flex flex-col items-center text-center">
-        <h3 id="modalTitle" class="text-lg font-bold text-amber-400 border-b border-slate-700 w-full pb-2">Reference Guide</h3>
-        
-        <!-- Target for the specific step photo (Transforms applied here) -->
-        <img id="modalRefImage" src="" alt="Reference Pose" class="w-48 h-auto rounded-lg border border-slate-600 hidden transition-transform duration-300" />
-        
-        <p id="modalRefText" class="text-sm text-slate-300"></p>
-        
-        <ul class="text-xs text-slate-400 space-y-2 text-left bg-slate-950 p-3 rounded-lg w-full">
-          <li>• Match the hand angle exactly.</li>
-          <li>• Tap screen to focus on lines.</li>
-          <li>• Move to bright lighting.</li>
-        </ul>
-        <button onclick="toggleHelp(false)" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-3 rounded-xl transition mt-4">Got it</button>
+      <!-- Native-camera fallback controls -->
+      <div id="fileControls" class="hidden mt-4 space-y-2">
+        <button id="filePickBtn" type="button"
+                class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-3 rounded-xl transition disabled:opacity-60">
+          Take photo
+        </button>
+        <button id="galleryBtn" type="button"
+                class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm py-2.5 rounded-xl transition disabled:opacity-60">
+          Choose a photo instead
+        </button>
+        <button id="fileBackBtn" type="button" class="w-full text-xs text-slate-400 hover:text-white underline py-1 disabled:opacity-40">Previous photo</button>
       </div>
-    </div>
 
-    <!-- STEP 3: Submission Confirmation -->
-    <div id="step-complete" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center shadow-xl space-y-3">
-      <div class="w-12 h-12 bg-green-500/20 text-green-400 rounded-full flex items-center justify-center mx-auto text-xl font-bold">✓</div>
-      <h3 class="text-lg font-bold text-slate-100">Upload Complete</h3>
-      <p class="text-xs text-slate-400">All 10 verified photos have been securely uploaded.</p>
+      <!-- Two inputs: one asks the phone for the camera, one for any image.
+           Some in-app browsers ignore "capture", so the second is the escape hatch. -->
+      <input id="fileInput"    type="file" accept="image/*" capture="environment" class="hidden">
+      <input id="galleryInput" type="file" accept="image/*" class="hidden">
+
+      <p id="captureStatus" class="text-[11px] text-slate-500 text-center mt-3"></p>
+    </section>
+
+    <!-- ============ STEP 3: UPLOADING ============ -->
+    <section id="step-uploading" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center shadow-xl space-y-4">
+      <div class="w-10 h-10 border-4 border-slate-700 border-t-amber-400 rounded-full mx-auto spin"></div>
+      <h2 class="text-base font-bold text-slate-100">Uploading your photos</h2>
+      <p id="uploadProgress" class="text-xs text-slate-400">Preparing…</p>
+      <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+        <div id="uploadBar" class="bg-amber-400 h-full w-0 transition-all duration-300"></div>
+      </div>
+      <p class="text-[11px] text-slate-500">Keep this screen open until it finishes.</p>
+    </section>
+
+    <!-- ============ STEP 4: DONE ============ -->
+    <section id="step-complete" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center shadow-xl space-y-3">
+      <div class="w-12 h-12 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto text-xl font-bold">✓</div>
+      <h2 class="text-lg font-bold text-slate-100">All ten photos received</h2>
+      <p class="text-xs text-slate-400">We'll review your palm and message you on WhatsApp to arrange the call.</p>
+      <p id="completeRef" class="text-[11px] text-slate-600 font-mono pt-2"></p>
+    </section>
+
+    <!-- ============ STEP 5: FAILED ============ -->
+    <section id="step-failed" class="hidden bg-slate-900 border border-red-900/60 rounded-2xl p-8 text-center shadow-xl space-y-4">
+      <div class="w-12 h-12 bg-red-500/20 text-red-400 rounded-full flex items-center justify-center mx-auto text-xl font-bold">!</div>
+      <h2 class="text-lg font-bold text-slate-100">Some photos didn't upload</h2>
+      <p id="failedDetail" class="text-xs text-slate-400"></p>
+      <button id="retryUploadBtn" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-3 rounded-xl transition">
+        Try uploading again
+      </button>
+    </section>
+  </div>
+
+  <!-- ============ HELP MODAL (fixed, so it always covers the viewport) ============ -->
+  <div id="helpModal" class="hidden fixed inset-0 z-50 bg-slate-950/92 backdrop-blur-sm flex items-center justify-center p-4"
+       role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl p-5 w-full max-w-sm shadow-2xl space-y-3 text-center max-h-[88dvh] overflow-y-auto">
+      <h3 id="modalTitle" class="text-base font-bold text-amber-400 border-b border-slate-700 pb-2">Reference</h3>
+      <img id="modalRefImage" src="" alt="Reference hand position"
+           class="w-44 h-auto mx-auto rounded-lg border border-slate-600 hidden">
+      <p id="modalRefText" class="text-sm text-slate-300"></p>
+      <ul class="text-xs text-slate-400 space-y-1.5 text-left bg-slate-950 p-3 rounded-lg">
+        <li>Match the hand angle in the picture.</li>
+        <li>Tap the preview once to focus on the lines.</li>
+        <li>Stand near a window or a bright lamp.</li>
+        <li>Fill the frame with your hand.</li>
+      </ul>
+      <button id="closeHelpBtn" type="button"
+              class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-3 rounded-xl transition">Got it</button>
     </div>
   </div>
 
 <script>
-    function toggleHelp(show) {
-      document.getElementById("helpModal").classList.toggle("hidden", !show);
+(function () {
+  "use strict";
+
+  /* ==========================================================
+     CONFIG — replace these three values
+     ========================================================== */
+  var GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby8KUg3s44uwrhlpNVJs8GdTg7eu9anyKuX42oWgH2nwyQ3Py7NiSlg_7hfQlKcFeNDFQ/exec";
+  var SUPABASE_URL      = "https://simfpaytvkqgknrrhvoj.supabase.co";
+  var SUPABASE_ANON_KEY = "sb_publishable_rfqgEkkZhzNEWKCxtPNZog_no_8KR5F";
+
+  var MAX_EDGE      = 1400;  // longest side of a stored photo, in px
+  var JPEG_QUALITY  = 0.82;
+  var UPLOAD_TRIES  = 3;
+  var CAPTURE_RATIO = 3 / 4;  // must match the aspect-[3/4] preview frame
+
+  /* ==========================================================
+     STEPS
+     ========================================================== */
+  var CAPTURE_STEPS = [
+    { id: "full_open",       title: "Full open palm",      img: "step1-open.jpg",  finger: "",
+      expect: "the palm facing the camera with fingers extended",
+      focus:  "the whole palm surface, from the wrist crease up to the base of the fingers" },
+    { id: "back_hand",       title: "Back of hand",        img: "step2-back.jpg",  finger: "",
+      expect: "the back of the hand facing the camera",
+      focus:  "the back of the hand, knuckles and nails" },
+    { id: "upper_mounts",    title: "Upper mounts",        img: "step3-upper.jpg", finger: "",
+      expect: "the palm facing the camera, framed close on the top part of the palm",
+      focus:  "the band of palm directly below the four fingers" },
+    { id: "side_percussion", title: "Side edge",           img: "step4-side.jpg",  finger: "",
+      expect: "the hand curled into a loose fist, seen from the side",
+      focus:  "the fleshy mound at the base of the thumb and the side of the hand" },
+    { id: "thumb_venus",     title: "Thumb base",          img: "step5-thumb.jpg", finger: "",
+      expect: "a closed fist facing the camera with the wrist visible",
+      focus:  "the curled fingers and the creases at the base of the thumb" },
+    { id: "thumb_pad",       title: "Thumb print",         img: "", finger: "thumb",
+      expect: "a close-up of one fingertip pad",
+      focus:  "the ridge pattern on the fingertip" },
+    { id: "index_pad",       title: "Index finger print",  img: "", finger: "index finger",
+      expect: "a close-up of one fingertip pad",
+      focus:  "the ridge pattern on the fingertip" },
+    { id: "middle_pad",      title: "Middle finger print", img: "", finger: "middle finger",
+      expect: "a close-up of one fingertip pad",
+      focus:  "the ridge pattern on the fingertip" },
+    { id: "ring_pad",        title: "Ring finger print",   img: "", finger: "ring finger",
+      expect: "a close-up of one fingertip pad",
+      focus:  "the ridge pattern on the fingertip" },
+    { id: "pinky_pad",       title: "Little finger print", img: "", finger: "little finger",
+      expect: "a close-up of one fingertip pad",
+      focus:  "the ridge pattern on the fingertip" }
+  ];
+
+  /* The five reference photos were shot of a RIGHT hand.
+     Mirror them when the client is having their left hand read. */
+  var REFERENCE_HAND = "Right";
+
+  /* ==========================================================
+     STATE
+     ========================================================== */
+  var stepIndex     = 0;
+  var captured      = {};        // stepId -> { dataUrl, blob }
+  var videoStream   = null;
+  var useLiveCamera = true;
+  var isLeftHand    = false;
+  var inquiryId     = null;
+  var netFailures   = 0;
+  var busy          = false;
+  var client        = null;
+
+  var $ = function (id) { return document.getElementById(id); };
+  var video       = $("video"),
+      reviewImage = $("reviewImage"),
+      aiWarning   = $("aiWarning"),
+      snapBtn     = $("snapBtn"),
+      backBtn     = $("backBtn"),
+      retakeBtn   = $("retakeBtn"),
+      fileInput    = $("fileInput"),
+      galleryInput = $("galleryInput"),
+      filePickBtn  = $("filePickBtn"),
+      galleryBtn   = $("galleryBtn"),
+      fileBackBtn  = $("fileBackBtn"),
+      statusLine   = $("captureStatus");
+
+  if (window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY) {
+    client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
+
+  /* ==========================================================
+     WIRING
+     ========================================================== */
+  $("startBtn").addEventListener("click", startCapture);
+  $("helpBtn").addEventListener("click", function () { toggleHelp(true); });
+  $("closeHelpBtn").addEventListener("click", function () { toggleHelp(false); });
+  $("helpModal").addEventListener("click", function (e) {
+    if (e.target === this) toggleHelp(false);
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") toggleHelp(false);
+  });
+
+  snapBtn.addEventListener("click", captureFromVideo);
+  filePickBtn.addEventListener("click", function () { fileInput.value = ""; fileInput.click(); });
+  galleryBtn.addEventListener("click", function () { galleryInput.value = ""; galleryInput.click(); });
+  fileInput.addEventListener("change", captureFromFile);
+  galleryInput.addEventListener("change", captureFromFile);
+  backBtn.addEventListener("click", goPrevious);
+  fileBackBtn.addEventListener("click", goPrevious);
+  retakeBtn.addEventListener("click", retakeCurrent);
+  $("retryUploadBtn").addEventListener("click", function () {
+    show("step-uploading");
+    uploadAll();
+  });
+  $("previewFrame").addEventListener("click", tapToFocus);
+
+  // Free the camera when the tab is hidden; reacquire on return.
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) {
+      stopCamera();
+    } else if (useLiveCamera && !$("step-camera").classList.contains("hidden") && !videoStream) {
+      initCamera();
+    }
+  });
+  window.addEventListener("pagehide", stopCamera);
+
+  // Warn before leaving mid-flow.
+  window.addEventListener("beforeunload", function (e) {
+    var finished = !$("step-complete").classList.contains("hidden");
+    if (Object.keys(captured).length > 0 && !finished) {
+      e.preventDefault();
+      e.returnValue = "";
+    }
+  });
+
+  /* ==========================================================
+     SCREEN HELPERS
+     ========================================================== */
+  function show(sectionId) {
+    ["step-details", "step-camera", "step-uploading", "step-complete", "step-failed"]
+      .forEach(function (id) { $(id).classList.toggle("hidden", id !== sectionId); });
+    window.scrollTo(0, 0);
+  }
+
+  function toggleHelp(open) {
+    $("helpModal").classList.toggle("hidden", !open);
+    document.body.style.overflow = open ? "hidden" : "";
+  }
+
+  function setWarning(text, tone) {
+    if (!text) { aiWarning.classList.add("hidden"); return; }
+    aiWarning.className =
+      "absolute top-3 left-3 right-3 z-30 text-white text-xs font-semibold px-3 py-2 rounded-lg shadow-lg text-center " +
+      (tone === "error" ? "animate-pulse-red"
+       : tone === "ok"  ? "bg-emerald-600/95"
+                        : "bg-slate-800/95");
+    aiWarning.textContent = text;
+  }
+
+  function setBusy(state, label) {
+    busy = state;
+    snapBtn.disabled = state;
+    filePickBtn.disabled = state;
+    galleryBtn.disabled = state;
+    backBtn.disabled = state || stepIndex === 0;
+    fileBackBtn.disabled = state || stepIndex === 0;
+    retakeBtn.disabled = state || !captured[CAPTURE_STEPS[stepIndex].id];
+    statusLine.textContent = label || "";
+  }
+
+  /* ==========================================================
+     STEP 1 — DETAILS
+     ========================================================== */
+  function showDetailsError(msg) {
+    var box = $("detailsError");
+    box.textContent = msg;
+    box.classList.toggle("hidden", !msg);
+  }
+
+  async function startCapture() {
+    var name   = $("fullName").value.trim();
+    var mobile = $("mobile").value.replace(/\D/g, "");
+    var dob    = $("dob").value;
+    var place  = $("birthPlace").value.trim();
+
+    if (name.length < 2)   return showDetailsError("Please enter your full name.");
+    if (mobile.length < 10) return showDetailsError("Please enter a valid mobile number with at least 10 digits.");
+    if (!dob)              return showDetailsError("Please enter your date of birth.");
+    if (!place)            return showDetailsError("Please enter your place of birth.");
+    showDetailsError("");
+
+    isLeftHand = $("dominantHand").value === "Left";
+
+    var btn = $("startBtn");
+    btn.disabled = true;
+    btn.textContent = "Starting…";
+
+    // Create the Supabase record FIRST, so a half-finished session is still visible.
+    try {
+      inquiryId = await createInquiry({
+        full_name:     name,
+        dob:           dob,
+        birth_time:    $("birthTime").value || null,
+        birth_place:   place,
+        mobile:        mobile,
+        dominant_hand: $("dominantHand").value
+      });
+    } catch (err) {
+      console.error(err);
+      btn.disabled = false;
+      btn.textContent = "Start photo capture";
+      return showDetailsError("Couldn't reach the server. Check your connection and try again.");
     }
 
-    document.addEventListener("DOMContentLoaded", () => {
-      
-      const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyeOBp_OnETEorWuc84xpNR2Pu_aNlz-UENZVlpvjIQCxvOvayEB2Fro4pRQCqogy0ZYg/exec";
+    show("step-camera");
+    renderDots();
+    await initCamera();
+    updateStepUI();
+  }
 
-      const CAPTURE_STEPS = [
-        { id: "full_open", title: "1. Full Open Palm", img: "step1-open.jpg", fingerText: "" },
-        { id: "back_hand", title: "2. Back of Hand", img: "step2-back.jpg", fingerText: "" },
-        { id: "upper_mounts", title: "3. Upper Mounts", img: "step3-upper.jpg", fingerText: "" },
-        { id: "side_percussion", title: "4. Side Edge", img: "step4-side.jpg", fingerText: "" },
-        { id: "thumb_venus", title: "5. Thumb Base", img: "step5-thumb.jpg", fingerText: "" },
-        { id: "thumb_pad", title: "6. Thumb Fingerprint", img: "", fingerText: "Thumb Fingerprint" },
-        { id: "index_pad", title: "7. Index Fingerprint", img: "", fingerText: "Index Fingerprint" },
-        { id: "middle_pad", title: "8. Middle Fingerprint", img: "", fingerText: "Middle Fingerprint" },
-        { id: "ring_pad", title: "9. Ring Fingerprint", img: "", fingerText: "Ring Fingerprint" },
-        { id: "pinky_pad", title: "10. Little Fingerprint", img: "", fingerText: "Little Fingerprint" }
-      ];
-
-      let currentStepIndex = 0;
-      let capturedBlobs = {};
-      let videoStream = null;
-      let isLeftHand = false; // Stores the dominant hand globally
-
-      const video = document.getElementById("video");
-      const aiWarning = document.getElementById("aiWarning");
-      const btnSnap = document.getElementById("snapBtn");
-      const modalRefImage = document.getElementById("modalRefImage");
-
-      document.getElementById("startBtn").addEventListener("click", startPhotoProcess);
-      btnSnap.addEventListener("click", validateAndCaptureWithGemini);
-      document.getElementById("retakeBtn").addEventListener("click", retakeCurrentStep);
-
-      function startPhotoProcess() {
-        const name = document.getElementById("fullName").value.trim();
-        const mobile = document.getElementById("mobile").value.trim();
-        const dominantHand = document.getElementById("dominantHand").value;
-
-        if (!name || !mobile) {
-          alert("Please enter your name and contact details first.");
-          return;
-        }
-
-        // Save the selection globally
-        isLeftHand = (dominantHand === "Left");
-
-        document.getElementById("step-details").classList.add("hidden");
-        document.getElementById("step-camera").classList.remove("hidden");
-        initCamera();
-        updateStepUI();
-      }
-
-      async function initCamera() {
-        try {
-          videoStream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } },
-            audio: false
-          });
-          video.srcObject = videoStream;
-        } catch (err) {
-          alert("Camera permission denied. Please allow access.");
-        }
-      }
-
-      function updateStepUI() {
-        const step = CAPTURE_STEPS[currentStepIndex];
-        document.getElementById("stepCounter").innerText = `Photo ${currentStepIndex + 1} of ${CAPTURE_STEPS.length}`;
-        document.getElementById("stepTitle").innerText = step.title;
-        document.getElementById("modalTitle").innerText = step.title;
-
-        const fingerprintOverlay = document.getElementById("fingerprintOverlay");
-        const modalRefText = document.getElementById("modalRefText");
-        
-        if (step.img) {
-          modalRefImage.src = step.img;
-          modalRefImage.classList.remove("hidden");
-          fingerprintOverlay.classList.add("hidden");
-          modalRefText.innerText = "Copy the hand position shown above exactly.";
-          
-          // FORCE the flip to apply every single time the image loads
-          if (isLeftHand) {
-            modalRefImage.style.transform = "scaleX(1)";
-          } else {
-            modalRefImage.style.transform = "scaleX(-1)";
-          }
-        } else {
-          modalRefImage.classList.add("hidden");
-          fingerprintOverlay.classList.remove("hidden");
-          document.getElementById("fingerName").innerText = step.fingerText;
-          modalRefText.innerText = `Focus the camera perfectly on your ${step.fingerText} so the lines are completely visible.`;
-        }
-
-        aiWarning.classList.add("hidden");
-      }
-
-      async function askGemini(base64Image, stepInfo) {
-        const promptText = `Analyze this palmistry intake photo for the required step: "${stepInfo.title}".
-        CRITICAL RULES (Fail-Closed):
-        1. NO HAND: If there is no human hand (e.g., face, leg, object), return {"valid": false, "reason": "No hand detected. Please try again."}.
-        2. BLURRY LINES: The exact lines of the palm or fingerprint MUST be clearly visible. If they are blurry, out of focus, or hidden in shadows, return {"valid": false, "reason": "Lines are blurry. Tap to focus."}.
-        3. WRONG POSE: If the hand angle does not match "${stepInfo.title}", return {"valid": false, "reason": "Incorrect hand angle."}.
-        4. HAND: if the user has selected dominant hand as left then the image will be of left hand, so allow both left and right hand images, return {"valid": true}.
-
-        Return ONLY valid JSON: {"valid": true} OR {"valid": false, "reason": "Short reason"}. No markdown.`;
-
-        try {
-          const response = await fetch(GOOGLE_SCRIPT_URL, {
-            method: "POST",
-            body: JSON.stringify({ action: "verifyImage", promptText: promptText, base64: base64Image })
-          });
-          const data = await response.json();
-          const rawText = data.candidates[0].content.parts[0].text;
-          return JSON.parse(rawText.replace(/```json/g, '').replace(/```/g, '').trim());
-        } catch (e) {
-          console.error("Validation Error:", e);
-          return { valid: false, reason: "Verification failed. Make sure the hand position is correct and the image is not blur." }; 
-        }
-      }
-
-      async function validateAndCaptureWithGemini() {
-        btnSnap.disabled = true;
-        document.getElementById("retakeBtn").disabled = true;
-        aiWarning.classList.remove("hidden");
-        aiWarning.innerText = "Scanning lines with AI...";
-        
-        const canvas = document.createElement("canvas");
-        canvas.width = video.videoWidth || 1280;
-        canvas.height = video.videoHeight || 720;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        
-        const base64full = canvas.toDataURL("image/jpeg", 0.8);
-        const base64data = base64full.split(',')[1];
-        const step = CAPTURE_STEPS[currentStepIndex];
-
-        const validation = await askGemini(base64data, step);
-        
-        if (!validation.valid) {
-          aiWarning.innerText = `❌ ${validation.reason}`;
-          btnSnap.disabled = false;
-          document.getElementById("retakeBtn").disabled = false;
-          return; 
-        }
-
-        canvas.toBlob(async (blob) => {
-          capturedBlobs[step.id] = blob;
-          if (currentStepIndex < CAPTURE_STEPS.length - 1) {
-            currentStepIndex++;
-            updateStepUI();
-            btnSnap.disabled = false;
-            document.getElementById("retakeBtn").disabled = false;
-          } else {
-            await finalizeAndUpload();
-          }
-        }, "image/jpeg", 0.9);
-      }
-
-      function retakeCurrentStep() {
-        if (currentStepIndex > 0) {
-          currentStepIndex--;
-          updateStepUI();
-        }
-      }
-
-      async function finalizeAndUpload() {
-        document.getElementById("stepTitle").innerText = "Uploading to Server...";
-        document.getElementById("stepGuide").innerText = "Please keep this window open.";
-        aiWarning.classList.add("hidden");
-        
-        const mobile = document.getElementById("mobile").value.trim().replace(/[^0-9]/g, '');
-        
-        const uploadPromises = Object.entries(capturedBlobs).map(async ([stepId, blob]) => {
-          const b64 = await new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result.split(',')[1]);
-            reader.readAsDataURL(blob);
-          });
-          try {
-            await fetch(GOOGLE_SCRIPT_URL, {
-              method: "POST",
-              body: JSON.stringify({ filename: `${mobile}_${stepId}.jpg`, mimeType: "image/jpeg", base64: b64 })
-            });
-          } catch (err) { console.error("Upload error", err); }
-        });
-
-        await Promise.all(uploadPromises);
-
-        if (videoStream) videoStream.getTracks().forEach(track => track.stop());
-        document.getElementById("step-camera").classList.add("hidden");
-        document.getElementById("step-complete").classList.remove("hidden");
-      }
+  async function createInquiry(payload) {
+    if (!client) throw new Error("Supabase client unavailable");
+    var res = await client.rpc("create_inquiry", {
+      p_full_name:     payload.full_name,
+      p_dob:           payload.dob,
+      p_birth_time:    payload.birth_time,
+      p_birth_place:   payload.birth_place,
+      p_mobile:        payload.mobile,
+      p_dominant_hand: payload.dominant_hand
     });
-  </script>
+    if (res.error) throw res.error;
+    return res.data;
+  }
+
+  /* ==========================================================
+     CAMERA
+     ========================================================== */
+  async function initCamera() {
+    var secure = window.isSecureContext || location.protocol === "https:" || location.hostname === "localhost";
+    var supported = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+
+    if (!secure || !supported) {
+      return fallbackToFileCapture(
+        !secure ? "This page must be served over HTTPS for the live camera."
+                : "Live camera isn't available in this browser."
+      );
+    }
+
+    try {
+      videoStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: "environment" },
+          width:  { ideal: 1920 },
+          height: { ideal: 1440 }
+        },
+        audio: false
+      });
+      video.srcObject = videoStream;
+      await new Promise(function (resolve) {
+        if (video.readyState >= 2 && video.videoWidth) return resolve();
+        video.onloadedmetadata = resolve;
+        setTimeout(resolve, 4000);
+      });
+      try { await video.play(); } catch (e) { /* some browsers resolve late; frame still renders */ }
+
+      if (!video.videoWidth) {
+        return fallbackToFileCapture("The live preview didn't start on this device.");
+      }
+      useLiveCamera = true;
+      $("liveControls").classList.remove("hidden");
+      $("fileControls").classList.add("hidden");
+      $("cameraOff").classList.add("hidden");
+    } catch (err) {
+      console.error("getUserMedia failed:", err);
+      var reason = (err && (err.name === "NotAllowedError" || err.name === "SecurityError"))
+        ? "Camera access was blocked."
+        : "The camera couldn't be opened here.";
+      fallbackToFileCapture(reason);
+    }
+  }
+
+  function fallbackToFileCapture(reason) {
+    useLiveCamera = false;
+    stopCamera();
+    $("liveControls").classList.add("hidden");
+    $("fileControls").classList.remove("hidden");
+    $("cameraOff").classList.remove("hidden");
+    video.classList.add("hidden");
+    statusLine.textContent = reason + " Your phone's camera app will be used instead.";
+  }
+
+  function stopCamera() {
+    if (videoStream) {
+      videoStream.getTracks().forEach(function (t) { t.stop(); });
+      videoStream = null;
+    }
+  }
+
+  async function tapToFocus() {
+    if (!videoStream) return;
+    var track = videoStream.getVideoTracks()[0];
+    if (!track || !track.getCapabilities) return;
+    var caps = track.getCapabilities();
+    try {
+      if (caps.focusMode && caps.focusMode.indexOf("single-shot") !== -1) {
+        await track.applyConstraints({ advanced: [{ focusMode: "single-shot" }] });
+      } else if (caps.focusMode && caps.focusMode.indexOf("continuous") !== -1) {
+        await track.applyConstraints({ advanced: [{ focusMode: "continuous" }] });
+      }
+    } catch (e) { /* focus control is optional */ }
+  }
+
+  /* ==========================================================
+     STEP UI
+     ========================================================== */
+  function renderDots() {
+    $("progressDots").innerHTML = CAPTURE_STEPS.map(function (s, i) {
+      var cls = captured[s.id] ? "bg-emerald-400"
+              : i === stepIndex ? "bg-amber-400"
+              : "bg-slate-700";
+      return '<span class="w-1.5 h-1.5 rounded-full ' + cls + '"></span>';
+    }).join("");
+  }
+
+  function updateStepUI() {
+    var step = CAPTURE_STEPS[stepIndex];
+
+    $("stepCounter").textContent = "Photo " + (stepIndex + 1) + " of " + CAPTURE_STEPS.length;
+    $("stepTitle").textContent   = step.title;
+    $("modalTitle").textContent  = step.title;
+    $("stepGuide").textContent   = useLiveCamera ? "Tap ? to see the reference pose."
+                                                 : "Tap Open camera, then confirm the shot.";
+    renderDots();
+
+    var overlay = $("fingerprintOverlay");
+    var refImg  = $("modalRefImage");
+
+    if (step.img) {
+      refImg.src = step.img;
+      refImg.classList.remove("hidden");
+      refImg.style.transform =
+        (isLeftHand && REFERENCE_HAND === "Right") || (!isLeftHand && REFERENCE_HAND === "Left")
+          ? "scaleX(-1)" : "scaleX(1)";
+      overlay.classList.add("hidden");
+      $("modalRefText").textContent = "Copy this hand position as closely as you can.";
+    } else {
+      refImg.classList.add("hidden");
+      refImg.removeAttribute("src");
+      overlay.classList.toggle("hidden", !useLiveCamera);
+      $("fingerName").textContent = step.finger;
+      $("modalRefText").textContent =
+        "Hold your " + step.finger + " flat to the lens so the whole print fills the circle.";
+    }
+
+    // Show a previously captured shot for this step, if there is one.
+    if (captured[step.id]) {
+      reviewImage.src = captured[step.id].dataUrl;
+      reviewImage.classList.remove("hidden");
+      setWarning("Saved. Tap Retake to redo this one.", "ok");
+    } else {
+      reviewImage.classList.add("hidden");
+      reviewImage.removeAttribute("src");
+      setWarning("");
+    }
+
+    setBusy(false, "");
+  }
+
+  function goPrevious() {
+    if (busy || stepIndex === 0) return;
+    stepIndex--;
+    updateStepUI();
+  }
+
+  function retakeCurrent() {
+    if (busy) return;
+    delete captured[CAPTURE_STEPS[stepIndex].id];
+    updateStepUI();
+  }
+
+  function advance() {
+    if (stepIndex < CAPTURE_STEPS.length - 1) {
+      stepIndex++;
+      updateStepUI();
+    } else {
+      show("step-uploading");
+      stopCamera();
+      uploadAll();
+    }
+  }
+
+  /* ==========================================================
+     CAPTURE — live camera
+     What gets saved is exactly what the preview frame shows.
+     ========================================================== */
+  function cropToFrame(source, srcW, srcH) {
+    var canvas = document.createElement("canvas");
+    var sx, sy, sw, sh;
+    var srcRatio = srcW / srcH;
+
+    if (srcRatio > CAPTURE_RATIO) {         // source wider than frame → trim sides
+      sh = srcH; sw = srcH * CAPTURE_RATIO;
+      sx = (srcW - sw) / 2; sy = 0;
+    } else {                                 // source taller than frame → trim top/bottom
+      sw = srcW; sh = srcW / CAPTURE_RATIO;
+      sx = 0; sy = (srcH - sh) / 2;
+    }
+
+    var outH = Math.min(MAX_EDGE, Math.round(sh));
+    var outW = Math.round(outH * CAPTURE_RATIO);
+    canvas.width = outW;
+    canvas.height = outH;
+
+    var ctx = canvas.getContext("2d");
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(source, sx, sy, sw, sh, 0, 0, outW, outH);
+    return canvas;
+  }
+
+  async function captureFromVideo() {
+    if (busy) return;
+    if (!video.videoWidth) {
+      setWarning("The camera isn't ready yet. Wait a moment and try again.", "error");
+      return;
+    }
+    var canvas = cropToFrame(video, video.videoWidth, video.videoHeight);
+    await processCapture(canvas);
+  }
+
+  /* ==========================================================
+     CAPTURE — native camera app fallback
+     ========================================================== */
+  async function captureFromFile(e) {
+    var file = e.target.files && e.target.files[0];
+    if (!file) return;
+    setBusy(true, "Reading photo…");
+    try {
+      var bitmapSource = await loadImage(file);
+      var canvas = cropToFrame(
+        bitmapSource,
+        bitmapSource.naturalWidth || bitmapSource.width,
+        bitmapSource.naturalHeight || bitmapSource.height
+      );
+      await processCapture(canvas);
+    } catch (err) {
+      console.error(err);
+      setWarning("That photo couldn't be read. Please take it again.", "error");
+      setBusy(false, "");
+    }
+  }
+
+  function loadImage(file) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload  = function () { URL.revokeObjectURL(url); resolve(img); };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error("decode failed")); };
+      img.src = url;
+    });
+  }
+
+  /* ==========================================================
+     VALIDATE THEN STORE
+     ========================================================== */
+  async function processCapture(canvas) {
+    var step = CAPTURE_STEPS[stepIndex];
+    var dataUrl = canvas.toDataURL("image/jpeg", JPEG_QUALITY);
+    var base64  = dataUrl.split(",")[1];
+
+    reviewImage.src = dataUrl;
+    reviewImage.classList.remove("hidden");
+
+    setBusy(true, "");
+    setWarning("Checking the photo…", "info");
+
+    var result = await verifyImage(base64, step);
+
+    if (result.networkError) {
+      netFailures++;
+      if (netFailures >= 2) {
+        // The check itself is down — don't trap the client. Keep the photo,
+        // flag it, and let the reader review it manually.
+        captured[step.id] = { dataUrl: dataUrl, blob: await toBlob(canvas), unverified: true };
+        setWarning("Saved without the automatic check.", "ok");
+        setTimeout(advance, 700);
+        return;
+      }
+      setWarning("Couldn't reach the checker. Tap the shutter to try again.", "error");
+      reviewImage.classList.add("hidden");
+      setBusy(false, "");
+      return;
+    }
+
+    netFailures = 0;
+
+    if (!result.valid) {
+      setWarning(result.reason || "Please retake this photo.", "error");
+      reviewImage.classList.add("hidden");
+      reviewImage.removeAttribute("src");
+      setBusy(false, "");
+      return;
+    }
+
+    captured[step.id] = { dataUrl: dataUrl, blob: await toBlob(canvas), unverified: false };
+    setWarning("Looks good", "ok");
+    renderDots();
+    setTimeout(advance, 600);
+  }
+
+  function toBlob(canvas) {
+    return new Promise(function (resolve) {
+      if (canvas.toBlob) canvas.toBlob(resolve, "image/jpeg", JPEG_QUALITY);
+      else resolve(dataUrlToBlob(canvas.toDataURL("image/jpeg", JPEG_QUALITY)));
+    });
+  }
+
+  function dataUrlToBlob(dataUrl) {
+    var parts = dataUrl.split(",");
+    var bin = atob(parts[1]);
+    var arr = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    return new Blob([arr], { type: "image/jpeg" });
+  }
+
+  /* ==========================================================
+     GEMINI CHECK (via Apps Script)
+     NOTE: no Content-Type header on purpose. Setting one triggers a
+     CORS preflight that Apps Script cannot answer.
+     ========================================================== */
+  async function verifyImage(base64, step) {
+    var handWord = isLeftHand ? "left" : "right";
+    var prompt =
+      'You are checking one intake photo for a palm reading.\n' +
+      'The required shot is "' + step.title + '": ' + step.expect + '.\n' +
+      'Judge the photo on this area only: ' + step.focus + '. That area must be ' +
+      'sharp and well lit, with the lines or ridges clear enough to trace. Ignore ' +
+      'the background and anything outside that area.\n' +
+      'The client is having their ' + handWord + ' hand read, so a ' + handWord + ' hand is ' +
+      'expected. Never reject a photo only because of which hand it shows.\n\n' +
+      'Accept by default. Reject ONLY if one of these is clearly and obviously true:\n' +
+      '1. There is no human hand in the frame at all.\n' +
+      '2. The area described above is blurred, too dark, blown out by glare, or cut ' +
+      'off by the edge of the frame, so its lines cannot be traced.\n' +
+      '3. The hand is in a plainly different position from the one described — for ' +
+      'example the back of the hand when the palm was asked for. Small differences in ' +
+      'angle, framing, distance or zoom are fine; do not reject for those.\n\n' +
+      'Rings, bangles, mehndi and skin tone are never reasons to reject.\n' +
+      'If you are unsure, accept. When rejecting, give one short instruction the ' +
+      'client can act on, under 10 words.\n' +
+      'Respond with JSON only: {"valid":true} or {"valid":false,"reason":"..."}';
+
+    var controller = new AbortController();
+    var timer = setTimeout(function () { controller.abort(); }, 30000);
+
+    try {
+      var res = await fetch(GOOGLE_SCRIPT_URL, {
+        method: "POST",
+        body: JSON.stringify({ action: "verifyImage", promptText: prompt, base64: base64 }),
+        signal: controller.signal
+      });
+      clearTimeout(timer);
+      if (!res.ok) throw new Error("HTTP " + res.status);
+
+      var data = await res.json();
+      if (data.ok === false) throw new Error(data.error || "backend error");
+      if (typeof data.valid !== "boolean") throw new Error("unexpected response shape");
+
+      return { valid: data.valid, reason: data.reason };
+    } catch (err) {
+      clearTimeout(timer);
+      console.error("Verification failed:", err);
+      return { networkError: true };
+    }
+  }
+
+  /* ==========================================================
+     UPLOAD — sequential, with retries and honest failure
+     ========================================================== */
+  async function uploadAll() {
+    var mobile = $("mobile").value.replace(/\D/g, "");
+    var stamp  = new Date().toISOString().slice(0, 10);
+    var photos = {};
+    var failed = [];
+    var done   = 0;
+    var total  = CAPTURE_STEPS.length;
+
+    for (var i = 0; i < CAPTURE_STEPS.length; i++) {
+      var step = CAPTURE_STEPS[i];
+      var item = captured[step.id];
+      $("uploadProgress").textContent = "Photo " + (i + 1) + " of " + total + " — " + step.title;
+
+      if (!item) { failed.push(step.title); continue; }
+
+      var url = null;
+      for (var attempt = 1; attempt <= UPLOAD_TRIES && !url; attempt++) {
+        try {
+          url = await uploadOne(item.blob, mobile + "_" + stamp + "_" + step.id + ".jpg", mobile, inquiryId);
+        } catch (err) {
+          console.error("Upload attempt " + attempt + " for " + step.id + ":", err);
+          if (attempt < UPLOAD_TRIES) await sleep(1200 * attempt);
+        }
+      }
+
+      if (url) { photos[step.id] = url; }
+      else     { failed.push(step.title); }
+
+      done++;
+      $("uploadBar").style.width = Math.round((done / total) * 100) + "%";
+    }
+
+    // Save whatever made it, even on partial failure.
+    try {
+      await client.rpc("attach_photos", {
+        p_id:     inquiryId,
+        p_photos: photos,
+        p_status: failed.length ? "Photos Incomplete" : "New"
+      });
+    } catch (err) {
+      console.error("Could not attach photos:", err);
+    }
+
+    if (failed.length) {
+      $("failedDetail").textContent =
+        failed.length + " of " + total + " photos failed to upload: " + failed.join(", ") +
+        ". The rest were saved.";
+      show("step-failed");
+      return;
+    }
+
+    $("completeRef").textContent = inquiryId ? "Reference " + String(inquiryId).slice(0, 8) : "";
+    show("step-complete");
+  }
+
+  async function uploadOne(blob, filename, mobile, id) {
+    var base64 = await blobToBase64(blob);
+    var controller = new AbortController();
+    var timer = setTimeout(function () { controller.abort(); }, 60000);
+
+    try {
+      var res = await fetch(GOOGLE_SCRIPT_URL, {
+        method: "POST",
+        body: JSON.stringify({
+          action:     "uploadPhoto",
+          filename:   filename,
+          mimeType:   "image/jpeg",
+          base64:     base64,
+          folderName: mobile + "_" + String(id || "").slice(0, 8)
+        }),
+        signal: controller.signal
+      });
+      clearTimeout(timer);
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      var data = await res.json();
+      if (!data.ok || !data.url) throw new Error(data.error || "no url returned");
+      return data.url;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  function blobToBase64(blob) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onloadend = function () { resolve(String(reader.result).split(",")[1]); };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+})();
+</script>
 </body>
 </html>
