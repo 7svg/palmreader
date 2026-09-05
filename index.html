@@ -130,6 +130,10 @@
               class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-3 rounded-xl transition disabled:opacity-60">
         Save and continue
       </button>
+      <div class="flex justify-between">
+        <button id="profileBackBtn" type="button" class="text-xs text-slate-400 hover:text-white underline py-1">Cancel</button>
+        <button id="profileSignOutBtn" type="button" class="text-xs text-slate-400 hover:text-white underline py-1">Sign out</button>
+      </div>
     </section>
 
     <!-- ============ READY (returning client) ============ -->
@@ -148,6 +152,8 @@
         <button id="signOutBtn" type="button" class="text-xs text-slate-400 hover:text-white underline py-1">Sign out</button>
       </div>
       <p class="text-[11px] text-slate-500 text-center">Your photos are stored privately and used only for your reading.</p>
+      <button id="deleteAccountBtn" type="button"
+              class="w-full text-[11px] text-slate-600 hover:text-red-400 underline pt-2">Delete my account</button>
     </section>
 
     <!-- ============ STEP 2: CAPTURE ============ -->
@@ -240,6 +246,10 @@
       <h2 class="text-lg font-bold text-slate-100">All ten photos received</h2>
       <p class="text-xs text-slate-400">We'll review your palm and message you on WhatsApp to arrange the call.</p>
       <p id="completeRef" class="text-[11px] text-slate-600 font-mono pt-2"></p>
+      <div class="flex justify-between pt-2">
+        <button id="anotherReadingBtn" type="button" class="text-xs text-slate-400 hover:text-white underline py-1">Start another reading</button>
+        <button id="completeSignOutBtn" type="button" class="text-xs text-slate-400 hover:text-white underline py-1">Sign out</button>
+      </div>
     </section>
 
     <!-- ============ STEP 5: FAILED ============ -->
@@ -251,6 +261,27 @@
         Try uploading again
       </button>
     </section>
+  </div>
+
+  <!-- ============ DELETE ACCOUNT CONFIRMATION ============ -->
+  <div id="deleteModal" class="hidden fixed inset-0 z-50 bg-slate-950/92 backdrop-blur-sm flex items-center justify-center p-4"
+       role="dialog" aria-modal="true" aria-labelledby="deleteTitle">
+    <div class="bg-slate-900 border border-red-900/60 rounded-2xl p-5 w-full max-w-sm shadow-2xl space-y-4">
+      <h3 id="deleteTitle" class="text-base font-bold text-slate-100">Delete your account?</h3>
+      <p class="text-sm text-slate-400 leading-relaxed">
+        This removes your saved details and every reading you have submitted. It cannot be undone,
+        and you will have to start again from scratch if you come back.
+      </p>
+      <p id="deleteError" class="hidden text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg p-2.5"></p>
+      <button id="confirmDeleteBtn" type="button"
+              class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-xl transition disabled:opacity-60">
+        Yes, delete everything
+      </button>
+      <button id="cancelDeleteBtn" type="button"
+              class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 py-2.5 rounded-xl transition">
+        Keep my account
+      </button>
+    </div>
   </div>
 
   <!-- ============ HELP MODAL (fixed, so it always covers the viewport) ============ -->
@@ -384,9 +415,29 @@
     fillProfileForm();
     show("step-profile");
   });
-  $("signOutBtn").addEventListener("click", function () {
-    client.auth.signOut().then(function () { location.reload(); });
+  $("signOutBtn").addEventListener("click", signOut);
+  $("profileSignOutBtn").addEventListener("click", signOut);
+  $("completeSignOutBtn").addEventListener("click", signOut);
+  $("profileBackBtn").addEventListener("click", function () {
+    if (profile) showReady(); else signOut();
   });
+  $("anotherReadingBtn").addEventListener("click", function () {
+    // Fresh slate for a second reading without signing out.
+    stepIndex    = 0;
+    captured     = {};
+    uploadedUrls = {};
+    uploadJobs   = {};
+    inquiryId    = null;
+    showReady();
+  });
+  $("deleteAccountBtn").addEventListener("click", function () {
+    $("deleteError").classList.add("hidden");
+    $("deleteModal").classList.remove("hidden");
+  });
+  $("cancelDeleteBtn").addEventListener("click", function () {
+    $("deleteModal").classList.add("hidden");
+  });
+  $("confirmDeleteBtn").addEventListener("click", deleteAccount);
   $("helpBtn").addEventListener("click", function () { toggleHelp(true); });
   $("closeHelpBtn").addEventListener("click", function () { toggleHelp(false); });
   $("helpModal").addEventListener("click", function (e) {
@@ -468,6 +519,38 @@
   /* ==========================================================
      ACCOUNTS
      ========================================================== */
+  function signOut() {
+    var finished = !$("step-complete").classList.contains("hidden");
+    if (Object.keys(captured).length && !finished) {
+      if (!window.confirm("You have photos that haven't been submitted. Sign out anyway?")) return;
+    }
+    stopCamera();
+    if (!client) return location.reload();
+    client.auth.signOut().then(function () { location.reload(); });
+  }
+
+  async function deleteAccount() {
+    var btn = $("confirmDeleteBtn");
+    btn.disabled = true;
+    btn.textContent = "Deleting…";
+
+    var res = await client.rpc("delete_my_account");
+
+    if (res.error) {
+      console.error(res.error);
+      btn.disabled = false;
+      btn.textContent = "Yes, delete everything";
+      var box = $("deleteError");
+      box.textContent = res.error.message || "Couldn't delete the account. Please try again.";
+      box.classList.remove("hidden");
+      return;
+    }
+
+    stopCamera();
+    await client.auth.signOut();
+    location.reload();
+  }
+
   /* Supabase needs an email to identify an account. Clients never see one:
      we build it from their mobile number. Nothing is ever sent to it. */
   var LOGIN_DOMAIN = "@palmreader.app";
