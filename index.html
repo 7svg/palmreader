@@ -384,7 +384,7 @@
   var SUPABASE_URL      = "https://simfpaytvkqgknrrhvoj.supabase.co";
   var SUPABASE_ANON_KEY = "sb_publishable_rfqgEkkZhzNEWKCxtPNZog_no_8KR5F";
 
-  var APP_VERSION   = "2026-09-05-r";
+  var APP_VERSION   = "2026-09-05-s";
   var MAX_EDGE      = 1400;
   var JPEG_QUALITY  = 0.82;
   var CHECK_EDGE    = 900;
@@ -466,6 +466,7 @@
       "cam.unverified": "Saved without the automatic check.",
       "cam.notReady": "The camera isn't ready yet. Wait a moment and try again.",
       "cam.retakePlease": "Please retake this photo.",
+      "cam.seeHelp": "Tap ? to see how.",
       "cam.readFail": "That photo couldn't be read. Please take it again.",
       "cam.reading": "Reading photo…",
       "cam.fallback": "Your phone's camera app will be used instead.",
@@ -592,6 +593,7 @@
       "cam.unverified": "ચકાસણી વગર સાચવ્યો.",
       "cam.notReady": "કૅમેરો હજી તૈયાર નથી. થોડી વાર રાહ જુઓ.",
       "cam.retakePlease": "કૃપા કરીને આ ફોટો ફરી લો.",
+      "cam.seeHelp": "કેવી રીતે તે જોવા ? દબાવો.",
       "cam.readFail": "આ ફોટો વાંચી શકાયો નથી. ફરી લો.",
       "cam.reading": "ફોટો વાંચી રહ્યા છીએ…",
       "cam.fallback": "તમારા ફોનનો કૅમેરો વપરાશે.",
@@ -713,7 +715,7 @@
   };
   var GUIDES = {
     full_open:       { shape: "hand",      region: "all" },
-    back_hand:       { shape: "hand",      region: "all" },
+    back_hand:       { shape: "hand",      region: "all", flip: true },   // thumb is on the other side from behind
     upper_mounts:    { shape: "hand",      region: '<rect x="58" y="205" width="172" height="62" rx="31"/>' },
     side_percussion: { shape: "fistSide",  region: "all" },
     thumb_venus:     { shape: "fistFront", extra: "fistThumb", region: '<ellipse cx="205" cy="290" rx="52" ry="46"/>' },
@@ -852,6 +854,15 @@
   function setField(id, v)   { var el = $(id); if (el) el.value = v; }
   function setText(id, v)    { var el = $(id); if (el) el.textContent = v; }
   function buzz(ms)          { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) {} }
+
+  // Draw the eye to the ? button for a few seconds after a rejected photo.
+  var nudgeTimer = null;
+  function nudgeHelp() {
+    var b = $("helpBtn");
+    b.classList.add("animate-bounce", "ring-4", "ring-saffron/40");
+    clearTimeout(nudgeTimer);
+    nudgeTimer = setTimeout(function () { b.classList.remove("animate-bounce", "ring-4", "ring-saffron/40"); }, 4000);
+  }
 
   /* ==========================================================
      ACCOUNTS
@@ -1154,9 +1165,10 @@
                   (whole ? "" : g.region.replace("/>", " " + hot + "/>"));
       var grp = $("handGuideGroup");
       grp.innerHTML = inner;
-      // Finger silhouettes are symmetric; hands mirror for the other side.
-      grp.setAttribute("transform",
-        (g.shape !== "finger" && step.hand !== REFERENCE_HAND) ? "translate(300,0) scale(-1,1)" : "");
+      // Finger silhouettes are symmetric. Hands mirror for the other side, and
+      // the back-of-hand view mirrors again because the thumb swaps sides.
+      var mirror = (step.hand !== REFERENCE_HAND) !== !!g.flip;
+      grp.setAttribute("transform", (g.shape !== "finger" && mirror) ? "translate(300,0) scale(-1,1)" : "");
       guide.classList.remove("hidden");
       $("handGuideHint").textContent = t(step.img ? "hint." + step.base : "hint.finger");
       $("handGuideHint").classList.remove("hidden");
@@ -1340,9 +1352,10 @@
     netFailures = 0;
 
     if (!result.valid) {
-      setWarning(result.reason || t("cam.retakePlease"), "error");
+      setWarning((result.reason || t("cam.retakePlease")) + " " + t("cam.seeHelp"), "error");
       reviewImage.classList.add("hidden"); reviewImage.removeAttribute("src");
       buzz([60, 60, 60]);
+      nudgeHelp();
       setBusy(false, "");
       return;
     }
