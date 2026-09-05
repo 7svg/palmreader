@@ -291,6 +291,8 @@
   var client        = null;
   var uploadedUrls  = {};   // stepId -> Drive url, filled in as we go
   var uploadJobs    = {};   // stepId -> in-flight promise
+  var checking      = false;  // true while an AI check is waiting on the server
+  var uploadChain   = Promise.resolve();  // uploads run one at a time, in order
 
   var $ = function (id) { return document.getElementById(id); };
   var video       = $("video"),
@@ -713,7 +715,8 @@
     var startedAt = Date.now();
     var result = await verifyImage(shrinkForCheck(canvas), step);
     var seconds = ((Date.now() - startedAt) / 1000).toFixed(1);
-    statusLine.textContent = "Checked in " + seconds + "s";
+    statusLine.textContent = "Checked in " + seconds + "s" +
+      (result.geminiMs ? " (AI " + (result.geminiMs / 1000).toFixed(1) + "s)" : "");
 
     if (result.networkError) {
       netFailures++;
@@ -794,6 +797,7 @@
     var controller = new AbortController();
     var timer = setTimeout(function () { controller.abort(); }, 30000);
 
+    checking = true;   // pause background uploads so they don't queue ahead of us
     try {
       var res = await fetch(GOOGLE_SCRIPT_URL, {
         method: "POST",
@@ -807,11 +811,13 @@
       if (data.ok === false) throw new Error(data.error || "backend error");
       if (typeof data.valid !== "boolean") throw new Error("unexpected response shape");
 
-      return { valid: data.valid, reason: data.reason };
+      return { valid: data.valid, reason: data.reason, geminiMs: data.geminiMs };
     } catch (err) {
       clearTimeout(timer);
       console.error("Verification failed:", err);
       return { networkError: true };
+    } finally {
+      checking = false;
     }
   }
 
@@ -829,10 +835,24 @@
     var stamp  = new Date().toISOString().slice(0, 10);
     var name   = mobile + "_" + stamp + "_" + stepId + ".jpg";
 
-    uploadJobs[stepId] = uploadOne(item.blob, name, mobile, inquiryId)
+    // Apps Script handles one request at a time, so an upload running now
+    // would make the next AI check queue behind it. Wait for any check to
+    // finish, and run uploads strictly one after another.
+    uploadJobs[stepId] = uploadChain = uploadChain
+      .then(function () { return waitWhileChecking(); })
+      .then(function () { return uploadOne(item.blob, name, mobile, inquiryId); })
       .then(function (url) { uploadedUrls[stepId] = url; })
       .catch(function (err) { console.error("Background upload failed for " + stepId, err); })
       .then(function () { delete uploadJobs[stepId]; });
+  }
+
+  function waitWhileChecking() {
+    if (!checking) return Promise.resolve();
+    return new Promise(function (resolve) {
+      var iv = setInterval(function () {
+        if (!checking) { clearInterval(iv); resolve(); }
+      }, 200);
+    });
   }
 
   async function uploadAll() {
