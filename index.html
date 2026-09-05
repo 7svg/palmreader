@@ -48,8 +48,8 @@
     <!-- ============ SIGN IN ============ -->
     <section id="step-auth" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
       <div>
-        <h2 id="authTitle" class="text-sm font-semibold text-slate-200">Sign in</h2>
-        <p id="authBlurb" class="text-xs text-slate-400 mt-1">Your details are saved, so you only enter them once.</p>
+        <h2 id="authTitle" class="text-sm font-semibold text-slate-200">Create your account</h2>
+        <p id="authBlurb" class="text-xs text-slate-400 mt-1">Use your mobile number and pick a password. You only do this once.</p>
       </div>
 
       <div>
@@ -59,20 +59,20 @@
       </div>
       <div>
         <label for="authPassword" class="block text-xs text-slate-400 mb-1">Password</label>
-        <input id="authPassword" type="password" autocomplete="current-password"
+        <input id="authPassword" type="password" autocomplete="new-password"
                class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm focus:border-amber-400 outline-none">
-        <p class="text-[11px] text-slate-500 mt-1">At least 6 characters.</p>
+        <p id="authPasswordHint" class="text-[11px] text-slate-500 mt-1">Choose any password, at least 6 characters. Remember it for next time.</p>
       </div>
 
       <p id="authError" class="hidden text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg p-2.5"></p>
 
       <button id="authSubmitBtn"
               class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-3 rounded-xl transition disabled:opacity-60">
-        Sign in
+        Create account
       </button>
       <button id="authToggleBtn" type="button"
-              class="w-full text-xs text-slate-400 hover:text-white underline py-1">
-        New here? Create an account
+              class="w-full text-sm text-amber-400 hover:text-amber-300 underline py-2">
+        Already have an account? Sign in
       </button>
       <p id="versionTag" class="text-[10px] text-slate-700 text-center"></p>
     </section>
@@ -309,7 +309,7 @@
   var SUPABASE_URL      = "https://simfpaytvkqgknrrhvoj.supabase.co";
   var SUPABASE_ANON_KEY = "sb_publishable_rfqgEkkZhzNEWKCxtPNZog_no_8KR5F";
 
-  var APP_VERSION   = "2026-09-05-g";   // shown on the sign-in screen
+  var APP_VERSION   = "2026-09-05-h";   // shown on the sign-in screen
   var MAX_EDGE      = 1400;  // longest side of a stored photo, in px
   var JPEG_QUALITY  = 0.82;
   // The AI only needs enough detail to judge sharpness. Sending a small copy
@@ -369,7 +369,7 @@
   var isLeftHand    = false;
   var inquiryId     = null;
   var profile       = null;   // the signed-in client's saved details
-  var authMode      = "signin";
+  var authMode      = "signup";
   var signedInMobile = "";    // the number behind the account
   var netFailures   = 0;
   var busy          = false;
@@ -573,13 +573,16 @@
     var signup = authMode === "signup";
     $("authTitle").textContent      = signup ? "Create your account" : "Sign in";
     $("authBlurb").textContent      = signup
-      ? "Your mobile number is your login. Details are saved, so you never retype them."
+      ? "Use your mobile number and pick a password. You only do this once."
       : "Sign in with the mobile number you registered.";
     $("authSubmitBtn").textContent  = signup ? "Create account" : "Sign in";
     $("authToggleBtn").textContent  = signup
       ? "Already have an account? Sign in"
       : "New here? Create an account";
     $("authPassword").setAttribute("autocomplete", signup ? "new-password" : "current-password");
+    setText("authPasswordHint", signup
+      ? "Choose any password, at least 6 characters. Remember it for next time."
+      : "The password you chose when you created your account.");
     showAuthError("");
   }
 
@@ -610,7 +613,9 @@
     if (res.error) {
       var m = res.error.message || "Something went wrong.";
       if (/already registered|already been registered/i.test(m)) {
-        m = "This number already has an account. Tap 'Already have an account? Sign in'.";
+        // Flip them straight to sign-in with the number still filled in.
+        if (authMode === "signup") toggleAuthMode();
+        return showAuthError("This number already has an account. Enter your password to sign in.");
       } else if (/invalid login/i.test(m)) {
         m = "Mobile number or password is incorrect.";
       } else if (/password/i.test(m) && /short|least/i.test(m)) {
@@ -668,6 +673,11 @@
   function getField(id, fallback) {
     var el = $(id);
     return el ? el.value : (fallback === undefined ? "" : fallback);
+  }
+
+  function setText(id, value) {
+    var el = $(id);
+    if (el) el.textContent = value;
   }
 
   function setField(id, value) {
