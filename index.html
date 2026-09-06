@@ -175,6 +175,7 @@
       </div>
 
       <p id="detailsError" class="hidden text-sm text-sindoor bg-sindoor-light border border-sindoor/30 rounded-xl px-4 py-3 font-semibold"></p>
+      <p id="staffDebug" class="hidden text-[11px] text-ink-faint break-words"></p>
 
       <button id="saveProfileBtn"
               class="w-full bg-saffron hover:bg-saffron-deep text-ink text-lg font-extrabold py-4 rounded-2xl shadow-lift transition disabled:opacity-50"
@@ -483,7 +484,7 @@
   var SUPABASE_URL      = "https://simfpaytvkqgknrrhvoj.supabase.co";
   var SUPABASE_ANON_KEY = "sb_publishable_rfqgEkkZhzNEWKCxtPNZog_no_8KR5F";
 
-  var APP_VERSION   = "2026-09-06-b";
+  var APP_VERSION   = "2026-09-06-c";
   var MAX_EDGE      = 1400;
   var JPEG_QUALITY  = 0.82;
   var CHECK_EDGE    = 900;
@@ -1243,10 +1244,7 @@
     if (!signedInMobile && em.indexOf(LOGIN_DOMAIN) !== -1) signedInMobile = normaliseMobile(em.split("@")[0]);
 
     // Staff accounts land on the dashboard; everyone else on the client flow.
-    try {
-      var st = await client.rpc("is_staff");
-      isStaffUser = !st.error && st.data === true;
-    } catch (e) { isStaffUser = false; }
+    isStaffUser = await checkStaff(who.data.user.id);
 
     if (isStaffUser && !opts.clientMode) return showDashboard(em);
 
@@ -1256,6 +1254,27 @@
       fillProfileForm(); return show("step-profile");
     }
     showReady();
+  }
+
+  /* Two independent checks: the is_staff() function, and a direct read of the
+     staff table. Either one saying yes is enough. If both fail with an error,
+     the error is shown on screen so it can't hide. */
+  var staffCheckError = "";
+  async function checkStaff(uid) {
+    staffCheckError = "";
+    var errs = [];
+    try {
+      var st = await client.rpc("is_staff");
+      if (!st.error && st.data === true) return true;
+      if (st.error) errs.push("is_staff: " + st.error.message);
+    } catch (e) { errs.push("is_staff: " + (e.message || e)); }
+    try {
+      var row = await client.from("staff_users").select("user_id").eq("user_id", uid).maybeSingle();
+      if (!row.error && row.data) return true;
+      if (row.error) errs.push("staff_users: " + row.error.message);
+    } catch (e) { errs.push("staff_users: " + (e.message || e)); }
+    if (errs.length) { staffCheckError = errs.join(" | "); console.warn(staffCheckError); }
+    return false;
   }
 
   async function loadProfile() {
@@ -1268,6 +1287,8 @@
   }
 
   function fillProfileForm() {
+    var dbg = $("staffDebug");
+    if (dbg) { dbg.textContent = staffCheckError ? "Staff check: " + staffCheckError : ""; dbg.classList.toggle("hidden", !staffCheckError); }
     setField("fullName",     profile ? (profile.full_name || "") : "");
     setField("dob",          profile ? (profile.dob || "") : "");
     setField("birthPlace",   profile ? (profile.birth_place || "") : "");
