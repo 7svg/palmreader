@@ -85,7 +85,7 @@
         <img src="palmlogo.png" alt="" class="w-12 h-12 rounded-xl" onerror="this.style.display='none'">
         <div>
           <h1 class="text-xl font-extrabold leading-tight">Palm Reader</h1>
-          <p class="text-xs text-ink-soft" data-i18n="tagline">Both hands, twenty photos, checked as you go.</p>
+          <p class="text-xs text-ink-soft" data-i18n="tagline">Both hands, ten photos, checked as you go.</p>
         </div>
       </div>
       <div class="shrink-0 flex items-center gap-0.5 p-1 rounded-full border-2 border-line bg-white" role="group" aria-label="Language">
@@ -94,6 +94,31 @@
         <button type="button" class="lang-pill" data-lang="hi">हि</button>
       </div>
     </header>
+
+    <!-- ============ LOADING — the only screen that starts visible, so the
+         app can never show a blank page while it waits on the network ============ -->
+    <section id="step-loading" class="bg-white border border-line rounded-3xl p-8 text-center shadow-card space-y-4">
+      <div class="w-12 h-12 border-4 border-line border-t-saffron rounded-full mx-auto spin"></div>
+      <p class="text-sm text-ink-soft" data-i18n="boot.loading">Loading…</p>
+      <div id="bootStuck" class="hidden space-y-3 pt-1">
+        <p class="text-sm text-ink-soft leading-relaxed" data-i18n="boot.slow">This is taking longer than usual.</p>
+        <button id="bootResetBtn" type="button"
+                class="w-full bg-saffron hover:bg-saffron-deep text-ink font-extrabold py-3.5 rounded-2xl shadow-lift transition"
+                data-i18n="boot.reset">Reset the app</button>
+      </div>
+    </section>
+
+    <!-- ============ CAN'T REACH THE SERVER ============ -->
+    <section id="step-offline" class="hidden bg-white border-2 border-sindoor rounded-3xl p-8 text-center shadow-card space-y-4">
+      <div class="w-16 h-16 bg-sindoor-light text-sindoor rounded-full flex items-center justify-center mx-auto text-3xl font-extrabold">!</div>
+      <h2 class="text-2xl font-extrabold leading-tight" data-i18n="boot.offlineTitle">Can't reach the server</h2>
+      <p class="text-sm text-ink-soft leading-relaxed" data-i18n="boot.offlineBody">Check your internet connection and try again.</p>
+      <button id="offlineRetryBtn" type="button"
+              class="w-full bg-saffron hover:bg-saffron-deep text-ink text-lg font-extrabold py-4 rounded-2xl shadow-lift transition"
+              data-i18n="boot.retry">Try again</button>
+      <button id="offlineResetBtn" type="button"
+              class="w-full text-sm text-ink-soft hover:text-ink underline py-1" data-i18n="boot.reset">Reset the app</button>
+    </section>
 
     <!-- ============ SIGN IN / CREATE ACCOUNT ============ -->
     <section id="step-auth" class="hidden bg-white border border-line rounded-3xl p-6 shadow-card space-y-5">
@@ -260,12 +285,6 @@
 
         <img id="reviewImage" alt="" class="hidden absolute inset-0 w-full h-full object-cover z-10">
 
-        <div id="fingerprintOverlay"
-             class="hidden absolute top-3 left-3 right-3 text-center z-[6] pointer-events-none">
-          <p class="text-white font-extrabold text-sm drop-shadow" data-i18n-dyn="fingerLine"></p>
-          <p class="text-white/85 text-xs mt-1 drop-shadow" data-i18n="cam.holdStill">Hold still and keep the ridges brightly lit.</p>
-        </div>
-
         <div id="cameraOff"
              class="hidden absolute inset-0 flex flex-col items-center justify-center text-center p-6 z-20 bg-ink">
           <p class="text-white text-base font-bold" data-i18n="cam.usingApp">Using your phone's camera app</p>
@@ -327,7 +346,7 @@
     <!-- ============ DONE ============ -->
     <section id="step-complete" class="hidden bg-white border border-line rounded-3xl p-8 text-center shadow-card space-y-4">
       <div class="w-16 h-16 bg-mehndi-light text-mehndi rounded-full flex items-center justify-center mx-auto text-3xl font-extrabold">✓</div>
-      <h2 class="text-2xl font-extrabold leading-tight" data-i18n="done.title">All twenty photos received</h2>
+      <h2 class="text-2xl font-extrabold leading-tight" data-i18n="done.title">All ten photos received</h2>
       <p class="text-sm text-ink-soft leading-relaxed" data-i18n="done.body">We'll look at your palms and message you on WhatsApp to arrange the call.</p>
       <p id="completeRef" class="text-xs text-ink-faint"></p>
       <div class="flex justify-between pt-1">
@@ -445,22 +464,30 @@
   </div>
 
   <!-- ============ HELP ============ -->
-  <div id="helpModal" class="hidden fixed inset-0 z-50 bg-ink/60 backdrop-blur-sm flex items-center justify-center p-4"
+  <div id="helpModal" class="hidden fixed inset-0 z-50 bg-ink/60 backdrop-blur-sm flex items-center justify-center p-3"
        role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-    <div class="bg-white border border-line rounded-3xl p-6 w-full max-w-sm shadow-card space-y-4 text-center max-h-[88dvh] overflow-y-auto">
-      <h3 id="modalTitle" class="text-xl font-extrabold"></h3>
-      <img id="modalRefImage" src="" alt="Reference hand position"
-           class="w-48 h-auto mx-auto rounded-2xl border-2 border-line hidden">
-      <p id="modalRefText" class="text-base text-ink-soft"></p>
-      <ul class="text-sm text-ink space-y-2 text-left bg-page p-4 rounded-2xl">
-        <li class="flex gap-2"><span class="text-saffron font-extrabold">1</span><span data-i18n="help.tip1">Match the hand position in the picture.</span></li>
-        <li class="flex gap-2"><span class="text-saffron font-extrabold">2</span><span data-i18n="help.tip2">Tap the preview once to focus.</span></li>
-        <li class="flex gap-2"><span class="text-saffron font-extrabold">3</span><span data-i18n="help.tip3">Stand near a window or a bright lamp.</span></li>
-        <li class="flex gap-2"><span class="text-saffron font-extrabold">4</span><span data-i18n="help.tip4">Fill the frame with your hand.</span></li>
-        <li class="flex gap-2"><span class="text-saffron font-extrabold">5</span><span data-i18n="help.tip5">Lines faint? Rub a little talcum powder on the skin first.</span></li>
-      </ul>
+    <!-- Column layout: the middle scrolls if it must, but "Got it" is pinned
+         to the bottom so it is reachable on a short screen without scrolling. -->
+    <div class="bg-white border border-line rounded-3xl p-4 w-full max-w-sm shadow-card text-center
+                max-h-[92dvh] flex flex-col gap-3">
+      <h3 id="modalTitle" class="text-base font-extrabold shrink-0 leading-snug"></h3>
+
+      <div class="flex-1 min-h-0 overflow-y-auto space-y-2.5">
+        <!-- The reference photos are tall, so cap them by height, not width. -->
+        <img id="modalRefImage" src="" alt="Reference hand position"
+             class="max-h-[32dvh] w-auto mx-auto rounded-xl border-2 border-line hidden">
+        <p id="modalRefText" class="text-sm text-ink-soft leading-snug"></p>
+        <ul class="text-xs text-ink space-y-1.5 text-left bg-page p-3 rounded-2xl">
+          <li class="flex gap-2"><span class="text-saffron font-extrabold">1</span><span data-i18n="help.tip1">Match the hand position in the picture.</span></li>
+          <li class="flex gap-2"><span class="text-saffron font-extrabold">2</span><span data-i18n="help.tip2">Tap the preview once to focus.</span></li>
+          <li class="flex gap-2"><span class="text-saffron font-extrabold">3</span><span data-i18n="help.tip3">Stand near a window or a bright lamp.</span></li>
+          <li class="flex gap-2"><span class="text-saffron font-extrabold">4</span><span data-i18n="help.tip4">Fill the frame with your hand.</span></li>
+          <li class="flex gap-2"><span class="text-saffron font-extrabold">5</span><span data-i18n="help.tip5">Lines faint? Rub a little talcum powder on the skin first.</span></li>
+        </ul>
+      </div>
+
       <button id="closeHelpBtn" type="button"
-              class="w-full bg-saffron hover:bg-saffron-deep text-ink text-lg font-extrabold py-4 rounded-2xl shadow-lift transition"
+              class="shrink-0 w-full bg-saffron hover:bg-saffron-deep text-ink text-base font-extrabold py-3 rounded-2xl shadow-lift transition"
               data-i18n="help.ok">Got it</button>
     </div>
   </div>
@@ -484,7 +511,7 @@
   var SUPABASE_URL      = "https://simfpaytvkqgknrrhvoj.supabase.co";
   var SUPABASE_ANON_KEY = "sb_publishable_rfqgEkkZhzNEWKCxtPNZog_no_8KR5F";
 
-  var APP_VERSION   = "2026-09-06-c";
+  var APP_VERSION   = "2026-09-29-a";
   var MAX_EDGE      = 1400;
   var JPEG_QUALITY  = 0.82;
   var CHECK_EDGE    = 900;
@@ -497,7 +524,14 @@
      ========================================================== */
   var I18N = {
     en: {
-      "tagline": "Both hands, twenty photos, checked as you go.",
+      "boot.loading": "Loading…",
+      "boot.slow": "This is taking longer than usual.",
+      "boot.reset": "Reset the app",
+      "boot.retry": "Try again",
+      "boot.offlineTitle": "Can't reach the server",
+      "boot.offlineBody": "Check your internet connection and try again. If it keeps happening, tap Reset the app.",
+      "back.confirmExit": "Press back again to close the app",
+      "tagline": "Both hands, ten photos, checked as you go.",
       "auth.createTitle": "Create your account",
       "auth.createBlurb": "Use your mobile number and pick a password. You only do this once.",
       "auth.signinTitle": "Sign in",
@@ -543,8 +577,8 @@
       "common.signOut": "Sign out",
       "ready.hello": "Hello {name}",
       "ready.dominant": "Dominant hand",
-      "ready.step1": "Right hand, ten photos",
-      "ready.step2": "Left hand, ten photos",
+      "ready.step1": "Right hand, five photos",
+      "ready.step2": "Left hand, five photos",
       "ready.step3": "We call you to arrange your reading",
       "ready.start": "Start taking photos",
       "ready.starting": "Starting…",
@@ -562,8 +596,6 @@
       "cam.counter": "{hand} hand, photo {n} of {total}",
       "cam.tapHelp": "Tap ? to see the reference pose.",
       "cam.tapOpen": "Tap Take photo, then confirm the shot.",
-      "cam.holdStill": "Hold still and keep the ridges brightly lit.",
-      "cam.fingerLine": "Centre your {hand} {finger} here",
       "cam.usingApp": "Using your phone's camera app",
       "cam.usingAppSub": "Live preview isn't available here, so each photo opens the camera directly.",
       "cam.prev": "Previous",
@@ -585,7 +617,6 @@
       "cam.fallback": "Your phone's camera app will be used instead.",
       "cam.checkedIn": "Checked in {s}s",
       "help.copyPose": "Copy this position with your {hand} hand.",
-      "help.fingerPose": "Hold your {hand} {finger} flat to the lens so the whole print fills the circle.",
       "help.tip1": "Match the hand position in the picture.",
       "help.tip2": "Tap the preview once to focus.",
       "help.tip3": "Stand near a window or a bright lamp.",
@@ -600,7 +631,7 @@
       "upload.finishing": "Finishing the last few…",
       "upload.photo": "Photo {n} of {total}",
       "upload.keepOpen": "Keep this screen open until it finishes.",
-      "done.title": "All twenty photos received",
+      "done.title": "All ten photos received",
       "done.body": "We'll look at your palms and message you on WhatsApp to arrange the call.",
       "done.ref": "Reference {ref}",
       "done.another": "Start another reading",
@@ -615,30 +646,26 @@
       "del.fail": "Couldn't delete the account. Please try again.",
       "signout.confirm": "You have photos that haven't been sent. Sign out anyway?",
       "rotate": "Please hold your phone upright",
-      "finger.thumb": "thumb",
-      "finger.index": "index finger",
-      "finger.middle": "middle finger",
-      "finger.ring": "ring finger",
-      "finger.little": "little finger",
       "step.full_open": "Full open palm",
       "step.back_hand": "Back of hand",
       "step.upper_mounts": "Upper mounts",
       "step.side_percussion": "Side edge",
       "step.thumb_venus": "Closed hand",
-      "step.thumb_pad": "Thumb print",
-      "step.index_pad": "Index finger print",
-      "step.middle_pad": "Middle finger print",
-      "step.ring_pad": "Ring finger print",
-      "step.pinky_pad": "Little finger print",
       "hint.full_open": "Fit your whole hand inside the outline",
       "hint.back_hand": "Fit the back of your hand inside the outline",
       "hint.upper_mounts": "Bring the top of your palm into the oval",
       "hint.side_percussion": "Turn your fist side-on and fit it in the outline",
       "hint.thumb_venus": "Make a fist and fit it inside the outline",
-      "hint.finger": "Hold the fingertip flat so the print fills the oval"
     },
     gu: {
-      "tagline": "બંને હાથ, વીસ ફોટા, દરેક ફોટો તરત ચકાસાય છે.",
+      "boot.loading": "લોડ થઈ રહ્યું છે…",
+      "boot.slow": "સામાન્ય કરતાં વધુ સમય લાગી રહ્યો છે.",
+      "boot.reset": "એપ રીસેટ કરો",
+      "boot.retry": "ફરી પ્રયત્ન કરો",
+      "boot.offlineTitle": "સર્વર સાથે જોડાણ થતું નથી",
+      "boot.offlineBody": "તમારું ઇન્ટરનેટ તપાસીને ફરી પ્રયત્ન કરો. વારંવાર થાય તો 'એપ રીસેટ કરો' દબાવો.",
+      "back.confirmExit": "એપ બંધ કરવા ફરી બેક દબાવો",
+      "tagline": "બંને હાથ, દસ ફોટા, દરેક ફોટો તરત ચકાસાય છે.",
       "auth.createTitle": "તમારું એકાઉન્ટ બનાવો",
       "auth.createBlurb": "તમારો મોબાઇલ નંબર લખો અને પાસવર્ડ પસંદ કરો. આ ફક્ત એક જ વાર કરવાનું છે.",
       "auth.signinTitle": "સાઇન ઇન કરો",
@@ -684,8 +711,8 @@
       "common.signOut": "સાઇન આઉટ",
       "ready.hello": "નમસ્તે {name}",
       "ready.dominant": "મુખ્ય હાથ",
-      "ready.step1": "જમણો હાથ, દસ ફોટા",
-      "ready.step2": "ડાબો હાથ, દસ ફોટા",
+      "ready.step1": "જમણો હાથ, પાંચ ફોટા",
+      "ready.step2": "ડાબો હાથ, પાંચ ફોટા",
       "ready.step3": "તમારી હસ્તરેખા વાંચવા અમે ફોન કરીશું",
       "ready.start": "ફોટા લેવાનું શરૂ કરો",
       "ready.starting": "શરૂ થઈ રહ્યું છે…",
@@ -703,8 +730,6 @@
       "cam.counter": "{hand} હાથ, ફોટો {n} / {total}",
       "cam.tapHelp": "નમૂનો જોવા ? દબાવો.",
       "cam.tapOpen": "'ફોટો લો' દબાવો, પછી ફોટો ચકાસો.",
-      "cam.holdStill": "હાથ સ્થિર રાખો અને પૂરતો પ્રકાશ રાખો.",
-      "cam.fingerLine": "તમારા {hand} હાથનો {finger} અહીં રાખો",
       "cam.usingApp": "તમારા ફોનનો કૅમેરો વપરાય છે",
       "cam.usingAppSub": "અહીં લાઇવ પ્રિવ્યૂ નથી, દરેક ફોટા માટે કૅમેરો ખૂલશે.",
       "cam.prev": "પાછળ",
@@ -726,7 +751,6 @@
       "cam.fallback": "તમારા ફોનનો કૅમેરો વપરાશે.",
       "cam.checkedIn": "{s} સેકન્ડમાં ચકાસ્યો",
       "help.copyPose": "તમારા {hand} હાથથી આ સ્થિતિ કરો.",
-      "help.fingerPose": "તમારા {hand} હાથનો {finger} લેન્સ સામે સપાટ રાખો જેથી આખી છાપ ગોળામાં આવે.",
       "help.tip1": "ચિત્રમાં બતાવ્યા મુજબ હાથ રાખો.",
       "help.tip2": "ફોકસ માટે સ્ક્રીન પર એક વાર દબાવો.",
       "help.tip3": "બારી કે તેજ લાઇટ પાસે ઊભા રહો.",
@@ -741,7 +765,7 @@
       "upload.finishing": "છેલ્લા થોડા પૂરા થઈ રહ્યા છે…",
       "upload.photo": "ફોટો {n} / {total}",
       "upload.keepOpen": "પૂરું થાય ત્યાં સુધી આ સ્ક્રીન ખુલ્લી રાખો.",
-      "done.title": "બધા વીસ ફોટા મળી ગયા",
+      "done.title": "બધા દસ ફોટા મળી ગયા",
       "done.body": "અમે તમારી હથેળી જોઈને ફોન માટે WhatsApp પર સંદેશ મોકલીશું.",
       "done.ref": "સંદર્ભ {ref}",
       "done.another": "બીજું વાંચન શરૂ કરો",
@@ -756,30 +780,26 @@
       "del.fail": "એકાઉન્ટ કાઢી શકાયું નથી. ફરી પ્રયત્ન કરો.",
       "signout.confirm": "તમારા ફોટા હજી મોકલાયા નથી. તો પણ સાઇન આઉટ કરવું છે?",
       "rotate": "કૃપા કરીને ફોન સીધો રાખો",
-      "finger.thumb": "અંગૂઠો",
-      "finger.index": "તર્જની આંગળી",
-      "finger.middle": "વચલી આંગળી",
-      "finger.ring": "અનામિકા આંગળી",
-      "finger.little": "ટચલી આંગળી",
       "step.full_open": "ખુલ્લી હથેળી",
       "step.back_hand": "હાથની પાછળની બાજુ",
       "step.upper_mounts": "હથેળીનો ઉપરનો ભાગ",
       "step.side_percussion": "હાથની બાજુ",
       "step.thumb_venus": "બંધ હાથ",
-      "step.thumb_pad": "અંગૂઠાની છાપ",
-      "step.index_pad": "તર્જની આંગળીની છાપ",
-      "step.middle_pad": "વચલી આંગળીની છાપ",
-      "step.ring_pad": "અનામિકા આંગળીની છાપ",
-      "step.pinky_pad": "ટચલી આંગળીની છાપ",
       "hint.full_open": "આખો હાથ લીટીની અંદર રાખો",
       "hint.back_hand": "હાથની પાછળની બાજુ લીટીની અંદર રાખો",
       "hint.upper_mounts": "હથેળીનો ઉપરનો ભાગ ગોળામાં લાવો",
       "hint.side_percussion": "મુઠ્ઠી બાજુથી બતાવો અને લીટીની અંદર રાખો",
       "hint.thumb_venus": "મુઠ્ઠી વાળો અને લીટીની અંદર રાખો",
-      "hint.finger": "આંગળીનું ટેરવું સપાટ રાખો જેથી છાપ ગોળામાં આવે"
     },
     hi: {
-      "tagline": "दोनों हाथ, बीस फ़ोटो, हर फ़ोटो तुरंत जाँची जाती है।",
+      "boot.loading": "लोड हो रहा है…",
+      "boot.slow": "सामान्य से ज़्यादा समय लग रहा है।",
+      "boot.reset": "ऐप रीसेट करें",
+      "boot.retry": "फिर कोशिश करें",
+      "boot.offlineTitle": "सर्वर से कनेक्ट नहीं हो पा रहा",
+      "boot.offlineBody": "अपना इंटरनेट जाँचकर फिर कोशिश करें। बार-बार हो तो 'ऐप रीसेट करें' दबाएँ।",
+      "back.confirmExit": "ऐप बंद करने के लिए फिर बैक दबाएँ",
+      "tagline": "दोनों हाथ, दस फ़ोटो, हर फ़ोटो तुरंत जाँची जाती है।",
       "auth.createTitle": "अपना खाता बनाएँ",
       "auth.createBlurb": "अपना मोबाइल नंबर लिखें और एक पासवर्ड चुनें। यह सिर्फ़ एक बार करना है।",
       "auth.signinTitle": "साइन इन करें",
@@ -825,8 +845,8 @@
       "common.signOut": "साइन आउट",
       "ready.hello": "नमस्ते {name}",
       "ready.dominant": "प्रमुख हाथ",
-      "ready.step1": "दायाँ हाथ, दस फ़ोटो",
-      "ready.step2": "बायाँ हाथ, दस फ़ोटो",
+      "ready.step1": "दायाँ हाथ, पाँच फ़ोटो",
+      "ready.step2": "बायाँ हाथ, पाँच फ़ोटो",
       "ready.step3": "आपकी हस्तरेखा पढ़ने के लिए हम फ़ोन करेंगे",
       "ready.start": "फ़ोटो लेना शुरू करें",
       "ready.starting": "शुरू हो रहा है…",
@@ -844,8 +864,6 @@
       "cam.counter": "{hand} हाथ, फ़ोटो {n} / {total}",
       "cam.tapHelp": "नमूना देखने के लिए ? दबाएँ।",
       "cam.tapOpen": "'फ़ोटो लें' दबाएँ, फिर फ़ोटो जाँचें।",
-      "cam.holdStill": "हाथ स्थिर रखें और रोशनी अच्छी रखें।",
-      "cam.fingerLine": "अपने {hand} हाथ की {finger} यहाँ रखें",
       "cam.usingApp": "आपके फ़ोन का कैमरा इस्तेमाल हो रहा है",
       "cam.usingAppSub": "यहाँ लाइव प्रीव्यू नहीं है, हर फ़ोटो के लिए कैमरा खुलेगा।",
       "cam.prev": "पीछे",
@@ -867,7 +885,6 @@
       "cam.fallback": "आपके फ़ोन का कैमरा इस्तेमाल होगा।",
       "cam.checkedIn": "{s} सेकंड में जाँचा",
       "help.copyPose": "अपने {hand} हाथ से यह स्थिति बनाएँ।",
-      "help.fingerPose": "अपने {hand} हाथ की {finger} लेंस के सामने सीधी रखें ताकि पूरी छाप गोले में आए।",
       "help.tip1": "चित्र में दिखाए अनुसार हाथ रखें।",
       "help.tip2": "फ़ोकस के लिए स्क्रीन पर एक बार दबाएँ।",
       "help.tip3": "खिड़की या तेज़ रोशनी के पास खड़े हों।",
@@ -882,7 +899,7 @@
       "upload.finishing": "आख़िरी कुछ पूरे हो रहे हैं…",
       "upload.photo": "फ़ोटो {n} / {total}",
       "upload.keepOpen": "पूरा होने तक यह स्क्रीन खुली रखें।",
-      "done.title": "सभी बीस फ़ोटो मिल गए",
+      "done.title": "सभी दस फ़ोटो मिल गए",
       "done.body": "हम आपकी हथेली देखकर कॉल के लिए WhatsApp पर संदेश भेजेंगे।",
       "done.ref": "संदर्भ {ref}",
       "done.another": "एक और रीडिंग शुरू करें",
@@ -897,27 +914,16 @@
       "del.fail": "खाता नहीं हट सका। फिर कोशिश करें।",
       "signout.confirm": "आपके फ़ोटो अभी भेजे नहीं गए हैं। फिर भी साइन आउट करें?",
       "rotate": "कृपया फ़ोन सीधा रखें",
-      "finger.thumb": "अंगूठा",
-      "finger.index": "तर्जनी उँगली",
-      "finger.middle": "बीच की उँगली",
-      "finger.ring": "अनामिका उँगली",
-      "finger.little": "छोटी उँगली",
       "step.full_open": "खुली हथेली",
       "step.back_hand": "हाथ का पिछला हिस्सा",
       "step.upper_mounts": "हथेली का ऊपरी हिस्सा",
       "step.side_percussion": "हाथ की बग़ल",
       "step.thumb_venus": "बंद हाथ",
-      "step.thumb_pad": "अंगूठे की छाप",
-      "step.index_pad": "तर्जनी की छाप",
-      "step.middle_pad": "बीच की उँगली की छाप",
-      "step.ring_pad": "अनामिका की छाप",
-      "step.pinky_pad": "छोटी उँगली की छाप",
       "hint.full_open": "पूरा हाथ रेखा के अंदर रखें",
       "hint.back_hand": "हाथ का पिछला हिस्सा रेखा के अंदर रखें",
       "hint.upper_mounts": "हथेली का ऊपरी हिस्सा गोले में लाएँ",
       "hint.side_percussion": "मुट्ठी बग़ल से दिखाएँ और रेखा के अंदर रखें",
       "hint.thumb_venus": "मुट्ठी बाँधें और रेखा के अंदर रखें",
-      "hint.finger": "उँगली का सिरा सीधा रखें ताकि छाप गोले में आए"
     }
   };
 
@@ -969,12 +975,7 @@
       focus:  "the fleshy mound at the base of the thumb and the side of the hand" },
     { id: "thumb_venus",     img: "step5-thumb.jpg", finger: "",
       expect: "a closed fist facing the camera with the wrist visible",
-      focus:  "the whole closed hand: curled fingers, knuckles and the creases across it" },
-    { id: "thumb_pad",  img: "", finger: "thumb",  expect: "a close-up of one fingertip pad", focus: "the ridge pattern on the fingertip" },
-    { id: "index_pad",  img: "", finger: "index",  expect: "a close-up of one fingertip pad", focus: "the ridge pattern on the fingertip" },
-    { id: "middle_pad", img: "", finger: "middle", expect: "a close-up of one fingertip pad", focus: "the ridge pattern on the fingertip" },
-    { id: "ring_pad",   img: "", finger: "ring",   expect: "a close-up of one fingertip pad", focus: "the ridge pattern on the fingertip" },
-    { id: "pinky_pad",  img: "", finger: "little", expect: "a close-up of one fingertip pad", focus: "the ridge pattern on the fingertip" }
+      focus:  "the whole closed hand: curled fingers, knuckles and the creases across it" }
   ];
 
   /* Generic silhouettes in a 300x400 box, drawn as the RIGHT hand as its owner
@@ -985,15 +986,14 @@
     fistFront: "M75,215 Q70,150 98,140 Q112,118 128,140 Q145,115 162,138 Q180,118 196,140 Q216,124 228,152 Q252,182 246,232 Q246,300 220,332 Q190,362 150,362 Q100,356 80,320 Q64,282 75,215 Z",
     fistThumb: "M118,246 Q170,222 232,214",
     fistSide:  "M92,335 L92,232 Q96,182 132,162 Q152,142 178,146 Q202,150 206,176 Q208,200 190,206 Q216,212 236,236 Q252,270 242,302 Q226,342 186,352 Q140,360 110,346 Q94,340 92,335 Z",
-    finger:    "M100,400 L100,160 Q100,100 150,100 Q200,100 200,160 L200,400 Z"
+    finger:    ""
   };
   var GUIDES = {
     full_open:       { shape: "hand",      region: "all" },
     back_hand:       { shape: "hand",      region: "all", flip: true },   // thumb is on the other side from behind
     upper_mounts:    { shape: "hand",      region: '<rect x="58" y="205" width="172" height="62" rx="31"/>' },
     side_percussion: { shape: "fistSide",  region: "all" },
-    thumb_venus:     { shape: "fistFront", extra: "fistThumb", region: "all" },
-    finger:          { shape: "finger",    region: '<ellipse cx="150" cy="178" rx="42" ry="58"/>' }
+    thumb_venus:     { shape: "fistFront", extra: "fistThumb", region: "all" }
   };
 
   /* The reference photos show a RIGHT hand as its owner sees it through the
@@ -1021,6 +1021,7 @@
   var uploadedUrls = {}, uploadJobs = {}, checking = false, uploadChain = Promise.resolve();
   var returnToReview = false;
   var isStaffUser = false;
+  var screenShown = false;   // true once any screen has been made visible
   var fastCheckAvailable = true;   // flips off if the edge function isn't deployed yet
 
   var $ = function (id) { return document.getElementById(id); };
@@ -1094,12 +1095,14 @@
   /* ==========================================================
      SCREEN HELPERS
      ========================================================== */
-  var SCREENS = ["step-auth", "step-profile", "step-ready", "step-camera", "step-review",
-                 "step-uploading", "step-complete", "step-failed", "step-dashboard"];
+  var SCREENS = ["step-loading", "step-offline", "step-auth", "step-profile", "step-ready",
+                 "step-camera", "step-review", "step-uploading", "step-complete",
+                 "step-failed", "step-dashboard"];
 
   function show(id) {
     SCREENS.forEach(function (s) { $(s).classList.toggle("hidden", s !== id); });
     $("pageHeader").classList.toggle("hidden", id === "step-camera" || id === "step-dashboard");
+    screenShown = true;
     // The dashboard needs the full width of a laptop screen; everything else is phone-sized.
     $("shell").className = (id === "step-dashboard" ? "max-w-7xl" : "max-w-md") + " w-full space-y-4";
     window.scrollTo(0, 0);
@@ -1135,6 +1138,40 @@
   function setField(id, v)   { var el = $(id); if (el) el.value = v; }
   function setText(id, v)    { var el = $(id); if (el) el.textContent = v; }
   function buzz(ms)          { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) {} }
+
+  /* Every network call at startup gets a deadline. Without one, a single slow
+     request leaves the app on a blank screen for ever — which is exactly what
+     happened to a phone holding a month-old login. */
+  function withTimeout(promise, ms, label) {
+    var timer;
+    return Promise.race([
+      Promise.resolve(promise).then(function (v) { clearTimeout(timer); return v; },
+                                    function (e) { clearTimeout(timer); throw e; }),
+      new Promise(function (_, reject) {
+        timer = setTimeout(function () { reject(new Error("timed out: " + label)); }, ms);
+      })
+    ]);
+  }
+
+  /* Wipes the saved login, the service worker and any cache, then reloads.
+     The escape hatch for a client whose app is stuck on an old state. */
+  async function resetApp() {
+    try { localStorage.clear(); } catch (e) {}
+    try { sessionStorage.clear(); } catch (e) {}
+    try {
+      if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+        var regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map(function (r) { return r.unregister(); }));
+      }
+    } catch (e) {}
+    try {
+      if (window.caches && caches.keys) {
+        var keys = await caches.keys();
+        await Promise.all(keys.map(function (k) { return caches.delete(k); }));
+      }
+    } catch (e) {}
+    location.replace(location.pathname + "?fresh=" + Date.now());
+  }
 
   // Draw the eye to the ? button for a few seconds after a rejected photo.
   var nudgeTimer = null;
@@ -1229,26 +1266,50 @@
     if (!res.data || !res.data.session) return showAuthError(t("err.session"));
 
     signedInMobile = mobile;
-    await afterSignIn();
+    await afterSignIn(null, res.data.session.user);
   }
 
-  async function afterSignIn(opts) {
+  /* `user` is the one the session already carries, so we skip a getUser()
+     round-trip. The staff check and the profile load are independent, so they
+     go out together instead of one after the other: startup used to make six
+     sequential calls, it now makes two. */
+  async function afterSignIn(opts, user) {
     opts = opts || {};
-    var who = await client.auth.getUser();
-    if (!who || who.error || !who.data || !who.data.user) {
-      try { await client.auth.signOut(); } catch (e) {}
+
+    if (!user) {
+      try {
+        var who = await withTimeout(client.auth.getUser(), 9000, "getUser");
+        if (who && !who.error && who.data) user = who.data.user;
+      } catch (e) { console.warn(e); return show("step-offline"); }
+    }
+
+    if (!user) {
+      try { await withTimeout(client.auth.signOut(), 4000, "signOut"); } catch (e) {}
       show("step-auth");
       return showAuthError(t("err.session"));
     }
-    var em = who.data.user.email || "";
+
+    var em = user.email || "";
     if (!signedInMobile && em.indexOf(LOGIN_DOMAIN) !== -1) signedInMobile = normaliseMobile(em.split("@")[0]);
 
-    // Staff accounts land on the dashboard; everyone else on the client flow.
-    isStaffUser = await checkStaff(who.data.user.id);
+    var staffRes, profileRes;
+    try {
+      var both = await withTimeout(Promise.all([
+        checkStaff(user.id).catch(function () { return false; }),
+        loadProfile(user.id).then(function (v) { return { ok: true, value: v }; },
+                                  function (e) { return { ok: false, error: e }; })
+      ]), 12000, "startup lookups");
+      staffRes = both[0]; profileRes = both[1];
+    } catch (e) { console.warn(e); return show("step-offline"); }
 
+    isStaffUser = staffRes === true;
     if (isStaffUser && !opts.clientMode) return showDashboard(em);
 
-    profile = await loadProfile();
+    // A failed profile load is NOT the same as "no profile yet": sending a
+    // returning client back to the details form would make them retype it all.
+    if (!profileRes.ok) { console.warn(profileRes.error); return show("step-offline"); }
+    profile = profileRes.value;
+
     if (!profile) {
       if (isStaffUser) return showDashboard(em);   // staff needn't fill a client profile
       fillProfileForm(); return show("step-profile");
@@ -1262,27 +1323,29 @@
   var staffCheckError = "";
   async function checkStaff(uid) {
     staffCheckError = "";
-    var errs = [];
-    try {
-      var st = await client.rpc("is_staff");
-      if (!st.error && st.data === true) return true;
-      if (st.error) errs.push("is_staff: " + st.error.message);
-    } catch (e) { errs.push("is_staff: " + (e.message || e)); }
-    try {
-      var row = await client.from("staff_users").select("user_id").eq("user_id", uid).maybeSingle();
-      if (!row.error && row.data) return true;
-      if (row.error) errs.push("staff_users: " + row.error.message);
-    } catch (e) { errs.push("staff_users: " + (e.message || e)); }
+    // Both checks go out at once; either one saying yes is enough.
+    var results = await Promise.all([
+      Promise.resolve(client.rpc("is_staff"))
+        .then(function (r) { return (!r.error && r.data === true) ? true : (r.error ? "is_staff: " + r.error.message : false); },
+              function (e) { return "is_staff: " + (e.message || e); }),
+      Promise.resolve(client.from("staff_users").select("user_id").eq("user_id", uid).maybeSingle())
+        .then(function (r) { return (!r.error && r.data) ? true : (r.error ? "staff_users: " + r.error.message : false); },
+              function (e) { return "staff_users: " + (e.message || e); })
+    ]);
+    if (results.indexOf(true) !== -1) return true;
+    var errs = results.filter(function (r) { return typeof r === "string"; });
     if (errs.length) { staffCheckError = errs.join(" | "); console.warn(staffCheckError); }
     return false;
   }
 
-  async function loadProfile() {
-    var who = await client.auth.getUser();
-    var uid = who && who.data && who.data.user ? who.data.user.id : null;
+  async function loadProfile(uid) {
+    if (!uid) {
+      var who = await client.auth.getUser();
+      uid = who && who.data && who.data.user ? who.data.user.id : null;
+    }
     if (!uid) return null;
     var res = await client.from("palm_profiles").select("*").eq("user_id", uid).maybeSingle();
-    if (res.error) { console.error(res.error); return null; }
+    if (res.error) { console.error(res.error); throw new Error(res.error.message); }
     return res.data || null;
   }
 
@@ -1471,44 +1534,34 @@
     setText("stepGuide",   t(useLiveCamera ? "cam.tapHelp" : "cam.tapOpen"));
     renderHandProgress();
 
-    var overlay = $("fingerprintOverlay"), refImg = $("modalRefImage"), guide = $("handGuide");
-    var g = GUIDES[step.img ? step.base : "finger"];
+    var refImg = $("modalRefImage"), guide = $("handGuide");
+    var g = GUIDES[step.base];
 
     if (g && useLiveCamera) {
       var whole = g.region === "all";
       var dim   = 'fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="2.5" stroke-dasharray="8 6" stroke-linejoin="round"';
       var hot   = 'fill="rgba(240,162,46,0.20)" stroke="#F0A22E" stroke-width="3" stroke-dasharray="10 7" stroke-linejoin="round"';
-      var inner = '<path d="' + SHAPES[g.shape] + '" ' + (whole ? hot : dim) + '/>' +
-                  (g.extra ? '<path d="' + SHAPES[g.extra] + '" ' + dim + '/>' : "") +
-                  (whole ? "" : g.region.replace("/>", " " + hot + "/>"));
       var grp = $("handGuideGroup");
-      grp.innerHTML = inner;
-      // Finger silhouettes are symmetric. Hands mirror for the other side, and
-      // the back-of-hand view mirrors again because the thumb swaps sides.
+      grp.innerHTML =
+        '<path d="' + SHAPES[g.shape] + '" ' + (whole ? hot : dim) + '/>' +
+        (g.extra ? '<path d="' + SHAPES[g.extra] + '" ' + dim + '/>' : "") +
+        (whole ? "" : g.region.replace("/>", " " + hot + "/>"));
+      // Mirror for the other hand; the back-of-hand view mirrors again
+      // because the thumb sits on the opposite side from behind.
       var mirror = (step.hand !== REFERENCE_HAND) !== !!g.flip;
-      grp.setAttribute("transform", (g.shape !== "finger" && mirror) ? "translate(300,0) scale(-1,1)" : "");
+      grp.setAttribute("transform", mirror ? "translate(300,0) scale(-1,1)" : "");
       guide.classList.remove("hidden");
-      $("handGuideHint").textContent = t(step.img ? "hint." + step.base : "hint.finger");
+      $("handGuideHint").textContent = t("hint." + step.base);
       $("handGuideHint").classList.remove("hidden");
     } else {
       guide.classList.add("hidden");
       $("handGuideHint").classList.add("hidden");
     }
 
-    if (step.img) {
-      refImg.src = step.img;
-      refImg.classList.remove("hidden");
-      refImg.style.transform = (step.hand !== REFERENCE_HAND) ? "scaleX(-1)" : "scaleX(1)";
-      overlay.classList.add("hidden");
-      setText("modalRefText", t("help.copyPose", { hand: handShort.toLowerCase() }));
-    } else {
-      refImg.classList.add("hidden"); refImg.removeAttribute("src");
-      overlay.classList.toggle("hidden", !useLiveCamera);
-      var fingerWord = t("finger." + step.finger);
-      overlay.querySelector("[data-i18n-dyn='fingerLine']").textContent =
-        t("cam.fingerLine", { hand: handShort.toLowerCase(), finger: fingerWord });
-      setText("modalRefText", t("help.fingerPose", { hand: handShort.toLowerCase(), finger: fingerWord }));
-    }
+    refImg.src = step.img;
+    refImg.classList.remove("hidden");
+    refImg.style.transform = (step.hand !== REFERENCE_HAND) ? "scaleX(-1)" : "scaleX(1)";
+    setText("modalRefText", t("help.copyPose", { hand: handShort.toLowerCase() }));
 
     if (captured[step.id]) {
       reviewImage.src = captured[step.id].dataUrl;
@@ -1882,7 +1935,6 @@
   }
   function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
-
   /* ==========================================================
      DASHBOARD (staff)
      ========================================================== */
@@ -1986,7 +2038,7 @@
             '<span class="text-[11px] px-2 py-0.5 rounded-full font-bold shrink-0 ' + statusPill(item.status) + '">' + esc(item.status || "New") + '</span>' +
           '</div>' +
           '<p class="text-xs text-ink-soft mt-1">' + fmtDate(item.created_at) + ' &nbsp; ' + esc(item.mobile || "no number") + '</p>' +
-          '<p class="text-xs text-ink-faint mt-0.5">' + count + ' of 20 photos &nbsp;&nbsp; Dominant: ' + esc(item.dominant_hand || "?") +
+          '<p class="text-xs text-ink-faint mt-0.5">' + count + ' photo' + (count === 1 ? '' : 's') + ' &nbsp;&nbsp; Dominant: ' + esc(item.dominant_hand || "?") +
             (item.preferred_language ? ' &nbsp;&nbsp; ' + esc(LANG_NAMES[item.preferred_language] || item.preferred_language) : "") + '</p>' +
         '</button>';
     }).join("");
@@ -2034,7 +2086,7 @@
       var inHand = known.filter(function (k) { return splitKey(k).hand === hand; });
       if (!inHand.length) return;
       html += '<div class="space-y-2"><p class="text-sm font-extrabold">' + hand + ' hand <span class="text-ink-faint font-semibold">' +
-              inHand.length + ' of 10</span></p><div class="grid grid-cols-3 sm:grid-cols-5 gap-3">' + inHand.map(tile).join("") + '</div></div>';
+              inHand.length + ' photos</span></p><div class="grid grid-cols-3 sm:grid-cols-5 gap-3">' + inHand.map(tile).join("") + '</div></div>';
     });
     var loose = known.filter(function (k) { return !splitKey(k).hand; }).concat(others);
     if (loose.length) {
@@ -2147,19 +2199,126 @@
   /* ==========================================================
      BOOT
      ========================================================== */
+  /* ==========================================================
+     ANDROID BACK BUTTON
+     Without this the app closes on the first back press. We keep one
+     spare history entry on top at all times; a back press consumes it,
+     we step back one screen and put it back. On a top-level screen the
+     first press warns and the second lets the app close, which is what
+     Android users expect.
+     ========================================================== */
+  var backExitArmed = false, backExitTimer = null;
+
+  function pushGuard() {
+    try {
+      if (!history.state || history.state.palm !== true) history.pushState({ palm: true }, "");
+    } catch (e) {}
+  }
+
+  function currentScreen() {
+    for (var i = 0; i < SCREENS.length; i++) {
+      var el = $(SCREENS[i]);
+      if (el && !el.classList.contains("hidden")) return SCREENS[i];
+    }
+    return "";
+  }
+
+  function armExit() {
+    if (backExitArmed) return false;          // second press: let it close
+    backExitArmed = true;
+    toast(t("back.confirmExit"));
+    clearTimeout(backExitTimer);
+    backExitTimer = setTimeout(function () { backExitArmed = false; }, 2200);
+    return true;                              // handled, stay in the app
+  }
+
+  async function backToCamera() {
+    show("step-camera");
+    await initCamera();
+    updateStepUI();
+  }
+
+  function handleBack() {
+    // Anything layered on top closes first.
+    if (!$("helpModal").classList.contains("hidden"))   { toggleHelp(false);                      return pushGuard(); }
+    if (!$("deleteModal").classList.contains("hidden")) { $("deleteModal").classList.add("hidden"); return pushGuard(); }
+    if (!$("lightbox").classList.contains("hidden"))    { closeLightbox();                        return pushGuard(); }
+
+    var screen = currentScreen();
+
+    if (screen === "step-uploading") { return pushGuard(); }   // never interrupt an upload
+
+    if (screen === "step-camera") {
+      if (returnToReview)    { returnToReview = false; stopCamera(); showReview(); }
+      else if (stepIndex > 0) goPrevious();
+      else                   { stopCamera(); showReady(); }
+      return pushGuard();
+    }
+    if (screen === "step-review")   { backToCamera();                       return pushGuard(); }
+    if (screen === "step-profile")  { if (profile) showReady(); else armExit(); return pushGuard(); }
+    if (screen === "step-complete" || screen === "step-failed") { showReady(); return pushGuard(); }
+    if (screen === "step-dashboard" && detailOpen()) { closeDetail();       return pushGuard(); }
+
+    // Top-level screen: warn once, then allow the app to close.
+    if (armExit()) pushGuard();
+  }
+
+  function detailOpen() {
+    var d = $("detailPanel");
+    return d && !d.classList.contains("hidden") && window.innerWidth < 768;
+  }
+  function closeDetail() { $("detailPanel").classList.add("hidden"); }
+
+  window.addEventListener("popstate", handleBack);
+  pushGuard();
+
+  $("bootResetBtn").addEventListener("click", resetApp);
+  $("offlineResetBtn").addEventListener("click", resetApp);
+  $("offlineRetryBtn").addEventListener("click", function () { location.reload(); });
+
+  /* Last line of defence. If something unforeseen throws and no screen was
+     ever revealed, put a usable page up rather than leaving it blank. */
+  setTimeout(function () { if (!screenShown) show("step-offline"); }, 20000);
+  window.addEventListener("unhandledrejection", function (e) {
+    console.warn("Unhandled:", e.reason);
+    if (!screenShown) show("step-offline");
+  });
+
   (async function boot() {
     applyLang();
     setText("versionTag", "v" + APP_VERSION);
     console.log("Palm Reader " + APP_VERSION);
 
-    if (!client) { show("step-auth"); return showAuthError(t("err.connect")); }
+    // Offer a way out if startup drags, without hiding the spinner.
+    var stuck = setTimeout(function () { $("bootStuck").classList.remove("hidden"); }, 6000);
+
     try {
-      var res = await client.auth.getSession();
-      if (res.data && res.data.session) { await afterSignIn(); return; }
+      if (!client) { show("step-auth"); return showAuthError(t("err.connect")); }
+
+      var res = null;
+      try {
+        res = await withTimeout(client.auth.getSession(), 9000, "getSession");
+      } catch (err) {
+        // A stored login we cannot verify is worse than none: clear it and
+        // let them sign in again, instead of hanging on a dead token.
+        console.warn("Couldn't restore session:", err);
+        try { await withTimeout(client.auth.signOut(), 4000, "signOut"); } catch (e) {}
+        show("step-auth");
+        return showAuthError(t("err.session"));
+      }
+
+      if (res && res.data && res.data.session) {
+        await afterSignIn(null, res.data.session.user);
+        return;
+      }
+      show("step-auth");
     } catch (err) {
-      try { await client.auth.signOut(); } catch (e) {}
+      console.error("Startup failed:", err);
+      if (!screenShown) show("step-offline");
+    } finally {
+      clearTimeout(stuck);
+      $("bootStuck").classList.add("hidden");
     }
-    show("step-auth");
   })();
 })();
 </script>
