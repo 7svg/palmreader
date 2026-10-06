@@ -256,15 +256,10 @@
     <!-- ============ CAPTURE ============ -->
     <section id="step-camera" class="hidden bg-white border border-line rounded-3xl p-4 shadow-card">
 
-      <div class="flex items-start justify-between gap-2 mb-2">
-        <div class="w-9 shrink-0"></div>
-        <div class="text-center flex-1 min-w-0">
-          <span id="stepCounter" class="inline-block text-xs bg-saffron-light text-ink px-3 py-1 rounded-full font-bold"></span>
-          <h2 id="stepTitle" class="font-extrabold text-lg mt-1.5 leading-snug"></h2>
-          <p id="stepGuide" class="text-xs text-ink-soft mt-0.5" data-i18n="cam.tapHelp">Tap ? to see the reference pose.</p>
-        </div>
-        <button id="helpBtn" type="button" aria-label="Show reference pose"
-                class="w-9 h-9 shrink-0 bg-saffron rounded-full text-ink font-extrabold text-lg hover:bg-saffron-deep transition flex items-center justify-center shadow-lift">?</button>
+      <div class="text-center mb-2">
+        <span id="stepCounter" class="inline-block text-xs bg-saffron-light text-ink px-3 py-1 rounded-full font-bold"></span>
+        <h2 id="stepTitle" class="font-extrabold text-lg mt-1.5 leading-snug"></h2>
+        <p id="stepGuide" class="text-xs text-ink-soft mt-0.5" data-i18n="cam.matchPhoto">Copy the small photo, then tap the button.</p>
       </div>
 
       <!-- Progress: two hands that fill from the wrist up. -->
@@ -285,14 +280,25 @@
 
         <img id="reviewImage" alt="" class="hidden absolute inset-0 w-full h-full object-cover z-10">
 
+        <!-- The reference pose, always on screen. Clients were not tapping a
+             help button, so the picture they need to copy now sits in the
+             corner of the viewfinder. Tapping it opens the full guide. -->
+        <button id="refThumbBtn" type="button" aria-label="Show the full reference"
+                class="hidden absolute z-[25] rounded-xl overflow-hidden
+                       border-2 border-saffron shadow-lg bg-black/40 active:scale-95 transition">
+          <img id="refThumbImage" src="" alt="Reference hand position" class="h-full w-auto object-contain">
+          <span class="absolute bottom-0 inset-x-0 bg-saffron text-ink text-[10px] font-extrabold py-0.5 text-center"
+                data-i18n="cam.copyThis">Copy this</span>
+        </button>
+
         <div id="cameraOff"
-             class="hidden absolute inset-0 flex flex-col items-center justify-center text-center p-6 z-20 bg-ink">
-          <p class="text-white text-base font-bold" data-i18n="cam.usingApp">Using your phone's camera app</p>
-          <p class="text-white/70 text-xs mt-2" data-i18n="cam.usingAppSub">Live preview isn't available here, so each photo opens the camera directly.</p>
+             class="hidden absolute inset-0 flex flex-col items-center justify-end text-center px-4 pb-4 z-20 bg-ink">
+          <p class="text-white text-sm font-bold" data-i18n="cam.usingApp">Using your phone's camera app</p>
+          <p class="text-white/70 text-xs mt-1" data-i18n="cam.usingAppSub">Live preview isn't available here, so each photo opens the camera directly.</p>
         </div>
 
         <div id="aiWarning" role="status" aria-live="polite"
-             class="hidden absolute top-3 left-3 right-3 z-30 text-white text-sm font-bold px-3 py-2.5 rounded-xl shadow-lg text-center"></div>
+             class="hidden absolute bottom-3 left-3 right-3 z-30 text-white text-sm font-bold px-3 py-2.5 rounded-xl shadow-lg text-center"></div>
       </div>
 
       <div id="liveControls" class="flex items-center justify-between w-full mt-3 px-2">
@@ -511,7 +517,7 @@
   var SUPABASE_URL      = "https://simfpaytvkqgknrrhvoj.supabase.co";
   var SUPABASE_ANON_KEY = "sb_publishable_rfqgEkkZhzNEWKCxtPNZog_no_8KR5F";
 
-  var APP_VERSION   = "2026-09-29-a";
+  var APP_VERSION   = "2026-10-06-b";
   var MAX_EDGE      = 1400;
   var JPEG_QUALITY  = 0.82;
   var CHECK_EDGE    = 900;
@@ -531,6 +537,9 @@
       "boot.offlineTitle": "Can't reach the server",
       "boot.offlineBody": "Check your internet connection and try again. If it keeps happening, tap Reset the app.",
       "back.confirmExit": "Press back again to close the app",
+      "cam.matchPhoto": "Copy the small photo, then tap the button.",
+      "cam.copyThis": "Copy this",
+      "cam.seeHelp": "Tap the small photo to see how.",
       "tagline": "Both hands, ten photos, checked as you go.",
       "auth.createTitle": "Create your account",
       "auth.createBlurb": "Use your mobile number and pick a password. You only do this once.",
@@ -594,7 +603,6 @@
       "status.Completed": "Completed",
       "lang.en": "English", "lang.gu": "ગુજરાતી", "lang.hi": "हिन्दी",
       "cam.counter": "{hand} hand, photo {n} of {total}",
-      "cam.tapHelp": "Tap ? to see the reference pose.",
       "cam.tapOpen": "Tap Take photo, then confirm the shot.",
       "cam.usingApp": "Using your phone's camera app",
       "cam.usingAppSub": "Live preview isn't available here, so each photo opens the camera directly.",
@@ -610,7 +618,6 @@
       "cam.unverified": "Saved without the automatic check.",
       "cam.notReady": "The camera isn't ready yet. Wait a moment and try again.",
       "cam.retakePlease": "Please retake this photo.",
-      "cam.seeHelp": "Tap ? to see how.",
       "cam.powderTip": "Tip: rub a little talcum powder on the skin so the lines stand out.",
       "cam.readFail": "That photo couldn't be read. Please take it again.",
       "cam.reading": "Reading photo…",
@@ -665,6 +672,9 @@
       "boot.offlineTitle": "સર્વર સાથે જોડાણ થતું નથી",
       "boot.offlineBody": "તમારું ઇન્ટરનેટ તપાસીને ફરી પ્રયત્ન કરો. વારંવાર થાય તો 'એપ રીસેટ કરો' દબાવો.",
       "back.confirmExit": "એપ બંધ કરવા ફરી બેક દબાવો",
+      "cam.matchPhoto": "નાના ફોટા પ્રમાણે હાથ રાખો, પછી બટન દબાવો.",
+      "cam.copyThis": "આવું કરો",
+      "cam.seeHelp": "કેવી રીતે તે જોવા નાના ફોટા પર દબાવો.",
       "tagline": "બંને હાથ, દસ ફોટા, દરેક ફોટો તરત ચકાસાય છે.",
       "auth.createTitle": "તમારું એકાઉન્ટ બનાવો",
       "auth.createBlurb": "તમારો મોબાઇલ નંબર લખો અને પાસવર્ડ પસંદ કરો. આ ફક્ત એક જ વાર કરવાનું છે.",
@@ -728,7 +738,6 @@
       "status.Completed": "પૂરું થયું",
       "lang.en": "English", "lang.gu": "ગુજરાતી", "lang.hi": "हिन्दी",
       "cam.counter": "{hand} હાથ, ફોટો {n} / {total}",
-      "cam.tapHelp": "નમૂનો જોવા ? દબાવો.",
       "cam.tapOpen": "'ફોટો લો' દબાવો, પછી ફોટો ચકાસો.",
       "cam.usingApp": "તમારા ફોનનો કૅમેરો વપરાય છે",
       "cam.usingAppSub": "અહીં લાઇવ પ્રિવ્યૂ નથી, દરેક ફોટા માટે કૅમેરો ખૂલશે.",
@@ -744,7 +753,6 @@
       "cam.unverified": "ચકાસણી વગર સાચવ્યો.",
       "cam.notReady": "કૅમેરો હજી તૈયાર નથી. થોડી વાર રાહ જુઓ.",
       "cam.retakePlease": "કૃપા કરીને આ ફોટો ફરી લો.",
-      "cam.seeHelp": "કેવી રીતે તે જોવા ? દબાવો.",
       "cam.powderTip": "ટિપ: ચામડી પર થોડો પાવડર લગાવો જેથી રેખાઓ સ્પષ્ટ દેખાય.",
       "cam.readFail": "આ ફોટો વાંચી શકાયો નથી. ફરી લો.",
       "cam.reading": "ફોટો વાંચી રહ્યા છીએ…",
@@ -799,6 +807,9 @@
       "boot.offlineTitle": "सर्वर से कनेक्ट नहीं हो पा रहा",
       "boot.offlineBody": "अपना इंटरनेट जाँचकर फिर कोशिश करें। बार-बार हो तो 'ऐप रीसेट करें' दबाएँ।",
       "back.confirmExit": "ऐप बंद करने के लिए फिर बैक दबाएँ",
+      "cam.matchPhoto": "छोटी फ़ोटो जैसा हाथ रखें, फिर बटन दबाएँ।",
+      "cam.copyThis": "ऐसा करें",
+      "cam.seeHelp": "कैसे करें, यह देखने के लिए छोटी फ़ोटो दबाएँ।",
       "tagline": "दोनों हाथ, दस फ़ोटो, हर फ़ोटो तुरंत जाँची जाती है।",
       "auth.createTitle": "अपना खाता बनाएँ",
       "auth.createBlurb": "अपना मोबाइल नंबर लिखें और एक पासवर्ड चुनें। यह सिर्फ़ एक बार करना है।",
@@ -862,7 +873,6 @@
       "status.Completed": "पूरा हुआ",
       "lang.en": "English", "lang.gu": "ગુજરાતી", "lang.hi": "हिन्दी",
       "cam.counter": "{hand} हाथ, फ़ोटो {n} / {total}",
-      "cam.tapHelp": "नमूना देखने के लिए ? दबाएँ।",
       "cam.tapOpen": "'फ़ोटो लें' दबाएँ, फिर फ़ोटो जाँचें।",
       "cam.usingApp": "आपके फ़ोन का कैमरा इस्तेमाल हो रहा है",
       "cam.usingAppSub": "यहाँ लाइव प्रीव्यू नहीं है, हर फ़ोटो के लिए कैमरा खुलेगा।",
@@ -878,7 +888,6 @@
       "cam.unverified": "बिना जाँच के सहेजा गया।",
       "cam.notReady": "कैमरा अभी तैयार नहीं है। थोड़ा रुककर फिर कोशिश करें।",
       "cam.retakePlease": "कृपया यह फ़ोटो फिर से लें।",
-      "cam.seeHelp": "कैसे करें, यह देखने के लिए ? दबाएँ।",
       "cam.powderTip": "टिप: त्वचा पर थोड़ा पाउडर लगाएँ ताकि रेखाएँ साफ़ दिखें।",
       "cam.readFail": "यह फ़ोटो पढ़ा नहीं जा सका। फिर से लें।",
       "cam.reading": "फ़ोटो पढ़ रहे हैं…",
@@ -1065,7 +1074,10 @@
   });
   $("cancelDeleteBtn").addEventListener("click", function () { $("deleteModal").classList.add("hidden"); });
   $("confirmDeleteBtn").addEventListener("click", deleteAccount);
-  $("helpBtn").addEventListener("click", function () { toggleHelp(true); });
+  $("refThumbBtn").addEventListener("click", function (e) {
+    e.stopPropagation();          // the frame itself is tap-to-focus
+    toggleHelp(true);
+  });
   $("closeHelpBtn").addEventListener("click", function () { toggleHelp(false); });
   $("helpModal").addEventListener("click", function (e) { if (e.target === this) toggleHelp(false); });
   document.addEventListener("keydown", function (e) { if (e.key === "Escape") toggleHelp(false); });
@@ -1114,9 +1126,16 @@
   }
 
   function setWarning(text, tone) {
-    if (!text) { aiWarning.classList.add("hidden"); return; }
+    var hint = $("handGuideHint");
+    if (!text) {
+      aiWarning.classList.add("hidden");
+      // Bring the standing hint back once the message clears.
+      if (hint && hint.dataset.wanted === "1") hint.classList.remove("hidden");
+      return;
+    }
+    if (hint) hint.classList.add("hidden");
     aiWarning.className =
-      "absolute top-3 left-3 right-3 z-30 text-white text-sm font-bold px-3 py-2.5 rounded-xl shadow-lg text-center " +
+      "absolute bottom-3 left-3 right-3 z-30 text-white text-sm font-bold px-3 py-2.5 rounded-xl shadow-lg text-center " +
       (tone === "error" ? "animate-pulse-red" : tone === "ok" ? "bg-mehndi/95" : "bg-ink/85");
     aiWarning.textContent = text;
   }
@@ -1176,7 +1195,7 @@
   // Draw the eye to the ? button for a few seconds after a rejected photo.
   var nudgeTimer = null;
   function nudgeHelp() {
-    var b = $("helpBtn");
+    var b = $("refThumbBtn");
     b.classList.add("animate-bounce", "ring-4", "ring-saffron/40");
     clearTimeout(nudgeTimer);
     nudgeTimer = setTimeout(function () { b.classList.remove("animate-bounce", "ring-4", "ring-saffron/40"); }, 4000);
@@ -1531,7 +1550,7 @@
     setText("stepCounter", t("cam.counter", { hand: handShort, n: within, total: STEPS_PER_HAND }));
     setText("stepTitle",   t("step." + step.base) + " (" + handShort + ")");
     setText("modalTitle",  t("step." + step.base) + " (" + handShort + ")");
-    setText("stepGuide",   t(useLiveCamera ? "cam.tapHelp" : "cam.tapOpen"));
+    setText("stepGuide",   t(useLiveCamera ? "cam.matchPhoto" : "cam.tapOpen"));
     renderHandProgress();
 
     var refImg = $("modalRefImage"), guide = $("handGuide");
@@ -1552,15 +1571,31 @@
       grp.setAttribute("transform", mirror ? "translate(300,0) scale(-1,1)" : "");
       guide.classList.remove("hidden");
       $("handGuideHint").textContent = t("hint." + step.base);
+      $("handGuideHint").dataset.wanted = "1";
       $("handGuideHint").classList.remove("hidden");
     } else {
       guide.classList.add("hidden");
+      $("handGuideHint").dataset.wanted = "0";
       $("handGuideHint").classList.add("hidden");
     }
 
+    // Both the corner thumbnail and the one inside the guide mirror for the
+    // other hand, so the client always sees the hand they are photographing.
+    var flipCss = (step.hand !== REFERENCE_HAND) ? "scaleX(-1)" : "scaleX(1)";
+
     refImg.src = step.img;
     refImg.classList.remove("hidden");
-    refImg.style.transform = (step.hand !== REFERENCE_HAND) ? "scaleX(-1)" : "scaleX(1)";
+    refImg.style.transform = flipCss;
+
+    var thumb = $("refThumbImage"), thumbBtn = $("refThumbBtn");
+    thumb.src = step.img;
+    thumb.style.transform = flipCss;
+    // Over a live preview it tucks into the corner. Without one the frame is
+    // empty, so the reference takes the space and becomes the main thing.
+    thumbBtn.className = "absolute z-[25] rounded-xl overflow-hidden border-2 border-saffron " +
+      "shadow-lg bg-black/40 active:scale-95 transition " +
+      (useLiveCamera ? "top-2 left-2 h-[42%]" : "top-3 left-1/2 -translate-x-1/2 h-[54%]");
+
     setText("modalRefText", t("help.copyPose", { hand: handShort.toLowerCase() }));
 
     if (captured[step.id]) {
