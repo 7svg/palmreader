@@ -286,7 +286,8 @@
         <button id="refThumbBtn" type="button" aria-label="Show the full reference"
                 class="hidden absolute z-[25] rounded-xl overflow-hidden
                        border-2 border-saffron shadow-lg bg-black/40 active:scale-95 transition">
-          <img id="refThumbImage" src="" alt="Reference hand position" class="h-full w-auto object-contain">
+          <svg id="refThumbArt" viewBox="0 0 300 400" role="img" aria-label="Reference hand position"
+               class="h-full w-auto bg-page"></svg>
           <span class="absolute bottom-0 inset-x-0 bg-saffron text-ink text-[10px] font-extrabold py-0.5 text-center"
                 data-i18n="cam.copyThis">Copy this</span>
         </button>
@@ -431,6 +432,26 @@
             <textarea id="astrologerNotes" rows="6"
                       class="w-full bg-field border-2 border-line rounded-2xl p-4 text-sm leading-relaxed focus:border-saffron outline-none"
                       placeholder="Line formations, mounts, guidance points… saves by itself as you type."></textarea>
+
+            <!-- Handwritten pages live alongside the typed notes. They go to the
+                 same Drive folder as the client's photos. -->
+            <div class="mt-3">
+              <div class="flex items-center justify-between gap-2 mb-2">
+                <p class="text-sm font-extrabold">Notebook pages</p>
+                <div class="flex items-center gap-2">
+                  <span id="noteUploadStatus" class="text-xs text-ink-faint"></span>
+                  <button id="addNoteImageBtn" type="button"
+                          class="bg-white border-2 border-line hover:border-saffron text-ink font-semibold text-sm px-3.5 py-2 rounded-xl transition">
+                    Add photo
+                  </button>
+                </div>
+              </div>
+              <div id="noteImageGrid" class="grid grid-cols-3 sm:grid-cols-5 gap-3"></div>
+              <p id="noteImageEmpty" class="text-sm text-ink-faint">
+                Photograph a page of your notebook and it will be kept with this reading.
+              </p>
+              <input id="noteImageInput" type="file" accept="image/*" multiple class="hidden">
+            </div>
           </div>
         </div>
       </div>
@@ -480,8 +501,8 @@
 
       <div class="flex-1 min-h-0 overflow-y-auto space-y-2.5">
         <!-- The reference photos are tall, so cap them by height, not width. -->
-        <img id="modalRefImage" src="" alt="Reference hand position"
-             class="max-h-[32dvh] w-auto mx-auto rounded-xl border-2 border-line hidden">
+        <svg id="modalRefArt" viewBox="0 0 300 400" role="img" aria-label="Reference hand position"
+             class="max-h-[32dvh] w-auto mx-auto rounded-xl border-2 border-line bg-page hidden"></svg>
         <p id="modalRefText" class="text-sm text-ink-soft leading-snug"></p>
         <ul class="text-xs text-ink space-y-1.5 text-left bg-page p-3 rounded-2xl">
           <li class="flex gap-2"><span class="text-saffron font-extrabold">1</span><span data-i18n="help.tip1">Match the hand position in the picture.</span></li>
@@ -517,7 +538,7 @@
   var SUPABASE_URL      = "https://simfpaytvkqgknrrhvoj.supabase.co";
   var SUPABASE_ANON_KEY = "sb_publishable_rfqgEkkZhzNEWKCxtPNZog_no_8KR5F";
 
-  var APP_VERSION   = "2026-10-06-b";
+  var APP_VERSION   = "2026-10-14-a";
   var MAX_EDGE      = 1400;
   var JPEG_QUALITY  = 0.82;
   var CHECK_EDGE    = 900;
@@ -970,26 +991,41 @@
      STEPS (ten per hand, both hands)
      ========================================================== */
   var BASE_STEPS = [
-    { id: "full_open",       img: "step1-open.jpg",  finger: "",
-      expect: "the palm facing the camera with fingers extended",
+    { id: "full_open",       expect: "the palm facing the camera with fingers extended",
       focus:  "the whole palm surface, from the wrist crease up to the base of the fingers" },
-    { id: "back_hand",       img: "step2-back.jpg",  finger: "",
-      expect: "the back of the hand facing the camera",
+    { id: "back_hand",       expect: "the back of the hand facing the camera",
       focus:  "the back of the hand, knuckles and nails" },
-    { id: "upper_mounts",    img: "step3-upper.jpg", finger: "",
-      expect: "the palm facing the camera, framed close on the top part of the palm",
+    { id: "upper_mounts",    expect: "the palm facing the camera, framed close on the top part of the palm",
       focus:  "the band of palm directly below the four fingers" },
-    { id: "side_percussion", img: "step4-side.jpg",  finger: "",
-      expect: "the hand curled into a loose fist, seen from the side",
+    { id: "side_percussion", expect: "the hand curled into a loose fist, seen from the side",
       focus:  "the fleshy mound at the base of the thumb and the side of the hand" },
-    { id: "thumb_venus",     img: "step5-thumb.jpg", finger: "",
-      expect: "a closed fist facing the camera with the wrist visible",
+    { id: "thumb_venus",     expect: "a closed fist facing the camera with the wrist visible",
       focus:  "the whole closed hand: curled fingers, knuckles and the creases across it" }
   ];
 
   /* Generic silhouettes in a 300x400 box, drawn as the RIGHT hand as its owner
      sees it (palm to camera, thumb on the right). The left hand is a mirror.
      "region" is the part that must be sharp; "all" means the whole shape. */
+  /* Hand diagrams drawn for this app — deliberately not photographs, so no
+     real palm lines are published. Red dashes mark what the photo must show.
+     Each is the inside of a 300x400 viewBox. */
+  var REF_ART = {
+    full_open: '<path d="M53,225 L53,125 Q53,108 68,108 Q83,108 83,125 L86,205 Q90,214 94,205 L92,75 Q92,58 108,58 Q124,58 124,75 L128,195 Q133,205 137,195 L133,55 Q133,38 150,38 Q167,38 167,55 L172,195 Q176,205 180,195 L176,75 Q176,58 192,58 Q208,58 208,75 L212,205 Q218,222 228,235 L258,165 Q268,148 282,156 Q292,168 285,185 L250,262 Q240,280 236,300 L224,395 L76,395 L60,300 Q50,260 53,225 Z" fill="#F7DCC2" stroke="#2A1D4F" stroke-width="4" stroke-linejoin="round"/><path d="M63,244 Q122,211 176,228" fill="none" stroke="#A1663C" stroke-width="3.2" stroke-linecap="round" opacity="0.85"/><path d="M202,266 Q138,286 70,289" fill="none" stroke="#A1663C" stroke-width="3.2" stroke-linecap="round" opacity="0.85"/><path d="M204,256 Q166,314 181,392" fill="none" stroke="#A1663C" stroke-width="3.2" stroke-linecap="round" opacity="0.85"/><path d="M150,392 Q155,312 150,250" fill="none" stroke="#A1663C" stroke-width="2.2" stroke-linecap="round" opacity="0.5"/><path d="M82,370 Q150,360 212,368" fill="none" stroke="#A1663C" stroke-width="2.2" stroke-linecap="round" opacity="0.45"/><path d="M53,225 L53,125 Q53,108 68,108 Q83,108 83,125 L86,205 Q90,214 94,205 L92,75 Q92,58 108,58 Q124,58 124,75 L128,195 Q133,205 137,195 L133,55 Q133,38 150,38 Q167,38 167,55 L172,195 Q176,205 180,195 L176,75 Q176,58 192,58 Q208,58 208,75 L212,205 Q218,222 228,235 L258,165 Q268,148 282,156 Q292,168 285,185 L250,262 Q240,280 236,300 L224,395 L76,395 L60,300 Q50,260 53,225 Z" fill="none" stroke="#E0333F" stroke-width="4.5" stroke-dasharray="12 8" stroke-linecap="round" stroke-linejoin="round"/>',
+    back_hand: '<g transform="translate(300,0) scale(-1,1)"><path d="M53,225 L53,125 Q53,108 68,108 Q83,108 83,125 L86,205 Q90,214 94,205 L92,75 Q92,58 108,58 Q124,58 124,75 L128,195 Q133,205 137,195 L133,55 Q133,38 150,38 Q167,38 167,55 L172,195 Q176,205 180,195 L176,75 Q176,58 192,58 Q208,58 208,75 L212,205 Q218,222 228,235 L258,165 Q268,148 282,156 Q292,168 285,185 L250,262 Q240,280 236,300 L224,395 L76,395 L60,300 Q50,260 53,225 Z" fill="#F7DCC2" stroke="#2A1D4F" stroke-width="4" stroke-linejoin="round"/><rect x="57" y="116" width="22" height="29" rx="10.5" fill="#FFF6EC" stroke="#A1663C" stroke-width="2.2"/><rect x="97" y="66" width="22" height="29" rx="10.5" fill="#FFF6EC" stroke="#A1663C" stroke-width="2.2"/><rect x="139" y="46" width="22" height="29" rx="10.5" fill="#FFF6EC" stroke="#A1663C" stroke-width="2.2"/><rect x="181" y="66" width="22" height="29" rx="10.5" fill="#FFF6EC" stroke="#A1663C" stroke-width="2.2"/><g transform="rotate(-42 270 172)"><rect x="257" y="162" width="26" height="21" rx="10" fill="#FFF6EC" stroke="#A1663C" stroke-width="2.2"/></g><path d="M62,214 Q70,206 80,214" fill="none" stroke="#A1663C" stroke-width="3" stroke-linecap="round" opacity="0.65"/><path d="M100,206 Q110,197 122,206" fill="none" stroke="#A1663C" stroke-width="3" stroke-linecap="round" opacity="0.65"/><path d="M142,198 Q152,189 164,198" fill="none" stroke="#A1663C" stroke-width="3" stroke-linecap="round" opacity="0.65"/><path d="M184,206 Q194,197 206,206" fill="none" stroke="#A1663C" stroke-width="3" stroke-linecap="round" opacity="0.65"/><path d="M98,252 Q150,244 204,254" fill="none" stroke="#A1663C" stroke-width="2.4" stroke-linecap="round" opacity="0.45"/><path d="M106,286 Q152,280 198,288" fill="none" stroke="#A1663C" stroke-width="2.2" stroke-linecap="round" opacity="0.4"/><path d="M86,366 Q150,358 214,366" fill="none" stroke="#A1663C" stroke-width="2.4" stroke-linecap="round" opacity="0.45"/><path d="M53,225 L53,125 Q53,108 68,108 Q83,108 83,125 L86,205 Q90,214 94,205 L92,75 Q92,58 108,58 Q124,58 124,75 L128,195 Q133,205 137,195 L133,55 Q133,38 150,38 Q167,38 167,55 L172,195 Q176,205 180,195 L176,75 Q176,58 192,58 Q208,58 208,75 L212,205 Q218,222 228,235 L258,165 Q268,148 282,156 Q292,168 285,185 L250,262 Q240,280 236,300 L224,395 L76,395 L60,300 Q50,260 53,225 Z" fill="none" stroke="#E0333F" stroke-width="4.5" stroke-dasharray="12 8" stroke-linecap="round" stroke-linejoin="round"/></g>',
+    upper_mounts: '<path d="M53,225 L53,125 Q53,108 68,108 Q83,108 83,125 L86,205 Q90,214 94,205 L92,75 Q92,58 108,58 Q124,58 124,75 L128,195 Q133,205 137,195 L133,55 Q133,38 150,38 Q167,38 167,55 L172,195 Q176,205 180,195 L176,75 Q176,58 192,58 Q208,58 208,75 L212,205 Q218,222 228,235 L258,165 Q268,148 282,156 Q292,168 285,185 L250,262 Q240,280 236,300 L224,395 L76,395 L60,300 Q50,260 53,225 Z" fill="#F7DCC2" stroke="#2A1D4F" stroke-width="4" stroke-linejoin="round"/><path d="M63,244 Q122,211 176,228" fill="none" stroke="#A1663C" stroke-width="3.2" stroke-linecap="round" opacity="0.85"/><path d="M202,266 Q138,286 70,289" fill="none" stroke="#A1663C" stroke-width="3.2" stroke-linecap="round" opacity="0.85"/><path d="M204,256 Q166,314 181,392" fill="none" stroke="#A1663C" stroke-width="3.2" stroke-linecap="round" opacity="0.85"/><path d="M150,392 Q155,312 150,250" fill="none" stroke="#A1663C" stroke-width="2.2" stroke-linecap="round" opacity="0.5"/><path d="M82,370 Q150,360 212,368" fill="none" stroke="#A1663C" stroke-width="2.2" stroke-linecap="round" opacity="0.45"/><rect x="60" y="206" width="170" height="64" rx="32" fill="rgba(224,51,63,0.10)" stroke="#E0333F" stroke-width="4.5" stroke-dasharray="12 8"/>',
+    side_percussion: '<path d="M112,308 L222,322 L214,400 L96,400 Z" fill="#F7DCC2" stroke="#2A1D4F" stroke-width="4" stroke-linejoin="round"/><path d="M98,318 Q88,252 104,206 Q122,166 168,158 Q214,152 238,184 Q256,210 252,252 Q250,302 226,330 Q196,356 152,352 Q112,346 98,318 Z" fill="#F7DCC2" stroke="#2A1D4F" stroke-width="4" stroke-linejoin="round"/><path d="M102,226 Q124,186 174,172 Q214,162 230,180 Q240,196 222,204 Q174,214 134,238 Q108,252 102,226 Z" fill="#EFCBA8" stroke="#2A1D4F" stroke-width="3.6" stroke-linejoin="round"/><path d="M116,262 Q168,252 232,260" fill="none" stroke="#A1663C" stroke-width="3.2" stroke-linecap="round" opacity="0.85"/><path d="M112,296 Q166,288 228,296" fill="none" stroke="#A1663C" stroke-width="3.2" stroke-linecap="round" opacity="0.85"/><path d="M120,326 Q168,320 216,326" fill="none" stroke="#A1663C" stroke-width="2.6" stroke-linecap="round" opacity="0.55"/><path d="M118,340 Q166,348 214,338" fill="none" stroke="#A1663C" stroke-width="2.4" stroke-linecap="round" opacity="0.4"/><path d="M98,318 Q88,252 104,206 Q122,166 168,158 Q214,152 238,184 Q256,210 252,252 Q250,302 226,330 Q196,356 152,352 Q112,346 98,318 Z" fill="none" stroke="#E0333F" stroke-width="4.5" stroke-dasharray="12 8" stroke-linecap="round" stroke-linejoin="round"/>',
+    thumb_venus: '<path d="M110,324 L206,324 L216,400 L98,400 Z" fill="#F7DCC2" stroke="#2A1D4F" stroke-width="4" stroke-linejoin="round"/><path d="M196,268 Q206,206 236,170 Q256,146 274,160 Q290,176 276,202 Q252,244 232,282 Q218,304 204,296 Q192,288 196,268 Z" fill="#EFCBA8" stroke="#2A1D4F" stroke-width="3.6" stroke-linejoin="round"/><path d="M84,236 Q80,186 104,166 Q118,142 138,162 Q154,140 172,160 Q190,140 206,162 Q228,176 228,214 Q230,258 224,296 Q216,342 168,352 Q118,356 96,322 Q82,290 84,236 Z" fill="#F7DCC2" stroke="#2A1D4F" stroke-width="4" stroke-linejoin="round"/><path d="M112,194 L110,244" fill="none" stroke="#A1663C" stroke-width="3.2" stroke-linecap="round" opacity="0.85"/><path d="M148,188 L147,240" fill="none" stroke="#A1663C" stroke-width="3.2" stroke-linecap="round" opacity="0.85"/><path d="M184,192 L184,244" fill="none" stroke="#A1663C" stroke-width="3.2" stroke-linecap="round" opacity="0.85"/><path d="M92,254 Q156,244 226,254" fill="none" stroke="#A1663C" stroke-width="2.8" stroke-linecap="round" opacity="0.6"/><path d="M96,300 Q156,292 222,300" fill="none" stroke="#A1663C" stroke-width="2.6" stroke-linecap="round" opacity="0.5"/><path d="M106,356 Q158,348 210,356" fill="none" stroke="#A1663C" stroke-width="2.4" stroke-linecap="round" opacity="0.45"/><path d="M84,236 Q80,186 104,166 Q118,142 138,162 Q154,140 172,160 Q190,140 206,162 Q228,176 228,214 Q230,258 224,296 Q216,342 168,352 Q118,356 96,322 Q82,290 84,236 Z" fill="none" stroke="#E0333F" stroke-width="4.5" stroke-dasharray="12 8" stroke-linecap="round" stroke-linejoin="round"/>'
+  };
+
+  /* Crop per drawing, so every hand fills its frame. */
+  var REF_VIEW = {
+    full_open:       "44 28 258 378",
+    back_hand:       "-2 28 258 378",
+    upper_mounts:    "44 28 258 378",
+    side_percussion: "76 146 190 264",
+    thumb_venus:     "76 124 212 290"
+  };
+
   var SHAPES = {
     hand:      "M53,225 L53,125 Q53,108 68,108 Q83,108 83,125 L86,205 Q90,214 94,205 L92,75 Q92,58 108,58 Q124,58 124,75 L128,195 Q133,205 137,195 L133,55 Q133,38 150,38 Q167,38 167,55 L172,195 Q176,205 180,195 L176,75 Q176,58 192,58 Q208,58 208,75 L212,205 Q218,222 228,235 L258,165 Q268,148 282,156 Q292,168 285,185 L250,262 Q240,280 236,300 L224,395 L76,395 L60,300 Q50,260 53,225 Z",
     fistFront: "M75,215 Q70,150 98,140 Q112,118 128,140 Q145,115 162,138 Q180,118 196,140 Q216,124 228,152 Q252,182 246,232 Q246,300 220,332 Q190,362 150,362 Q100,356 80,320 Q64,282 75,215 Z",
@@ -1016,7 +1052,7 @@
     BASE_STEPS.forEach(function (b) {
       CAPTURE_STEPS.push({
         id: hand.toLowerCase() + "_" + b.id, base: b.id, hand: hand,
-        img: b.img, finger: b.finger, expect: b.expect, focus: b.focus
+        expect: b.expect, focus: b.focus
       });
     });
   });
@@ -1553,7 +1589,7 @@
     setText("stepGuide",   t(useLiveCamera ? "cam.matchPhoto" : "cam.tapOpen"));
     renderHandProgress();
 
-    var refImg = $("modalRefImage"), guide = $("handGuide");
+    var refImg = $("modalRefArt"), guide = $("handGuide");
     var g = GUIDES[step.base];
 
     if (g && useLiveCamera) {
@@ -1579,16 +1615,20 @@
       $("handGuideHint").classList.add("hidden");
     }
 
-    // Both the corner thumbnail and the one inside the guide mirror for the
+    // Both the corner drawing and the one inside the guide mirror for the
     // other hand, so the client always sees the hand they are photographing.
     var flipCss = (step.hand !== REFERENCE_HAND) ? "scaleX(-1)" : "scaleX(1)";
+    var artwork = REF_ART[step.base] || "";
+    var viewBox = REF_VIEW[step.base] || "0 0 300 400";
 
-    refImg.src = step.img;
+    refImg.setAttribute("viewBox", viewBox);
+    refImg.innerHTML = artwork;
     refImg.classList.remove("hidden");
     refImg.style.transform = flipCss;
 
-    var thumb = $("refThumbImage"), thumbBtn = $("refThumbBtn");
-    thumb.src = step.img;
+    var thumb = $("refThumbArt"), thumbBtn = $("refThumbBtn");
+    thumb.setAttribute("viewBox", viewBox);
+    thumb.innerHTML = artwork;
     thumb.style.transform = flipCss;
     // Over a live preview it tucks into the corner. Without one the frame is
     // empty, so the reference takes the space and becomes the main thing.
@@ -1942,7 +1982,7 @@
     buzz([40, 40, 40]);
   }
 
-  async function uploadOne(blob, filename, mobile, id) {
+  async function uploadOne(blob, filename, mobile, id, folderOverride) {
     var base64 = await blobToBase64(blob);
     var controller = new AbortController();
     var timer = setTimeout(function () { controller.abort(); }, 60000);
@@ -1950,7 +1990,8 @@
       var res = await fetch(GOOGLE_SCRIPT_URL, {
         method: "POST",
         body: JSON.stringify({ action: "uploadPhoto", filename: filename, mimeType: "image/jpeg",
-                               base64: base64, folderName: mobile + "_" + String(id || "").slice(0, 8) }),
+                               base64: base64,
+                               folderName: folderOverride || (mobile + "_" + String(id || "").slice(0, 8)) }),
         signal: controller.signal
       });
       if (!res.ok) throw new Error("HTTP " + res.status);
@@ -1979,7 +2020,7 @@
     index_pad: "Index print", middle_pad: "Middle print", ring_pad: "Ring print", pinky_pad: "Little print"
   };
   var STEP_ORDER = CAPTURE_STEPS.map(function (st) { return st.id; });
-  var inquiries = [], active = null, lightboxKeys = [], lightboxIndex = 0, notesTimer = null;
+  var inquiries = [], active = null, lightboxKeys = [], lightboxList = [], lightboxIndex = 0, notesTimer = null;
   var LANG_NAMES = { en: "English", gu: "Gujarati", hi: "Hindi" };
 
   function splitKey(key) {
@@ -2099,6 +2140,8 @@
       "Dominant hand: <strong class=\"text-ink\">" + esc(item.dominant_hand || "not given") + "</strong>";
     $("astrologerNotes").value = item.astrologer_notes || "";
     $("notesStatus").textContent = "";
+    setText("noteUploadStatus", "");
+    renderNoteImages();
 
     var photos = item.photos || {};
     var known  = STEP_ORDER.filter(function (k) { return photos[k]; });
@@ -2144,28 +2187,37 @@
     if (window.innerWidth < 768) $("detailPanel").scrollIntoView({ behavior: "smooth" });
   }
 
-  function openLightbox(i) {
-    if (i < 0) return;
+  /* The viewer takes a list of {url,label}, so palm photos and notebook
+     pages can both use it without knowing about each other. */
+  function openLightboxList(list, i) {
+    if (!list.length || i < 0) return;
+    lightboxList = list;
     lightboxIndex = i;
-    var key = lightboxKeys[i], url = (active.photos || {})[key];
-    $("lightboxImg").src = driveThumb(url, 1600);
-    $("lightboxLabel").textContent = labelFor(key);
-    $("lightboxCount").textContent = (i + 1) + " of " + lightboxKeys.length;
-    $("lightboxOpen").href = url;
+    var item = list[i];
+    $("lightboxImg").src = driveThumb(item.url, 1600);
+    $("lightboxLabel").textContent = item.label;
+    $("lightboxCount").textContent = (i + 1) + " of " + list.length;
+    $("lightboxOpen").href = item.url;
     $("lightboxPrev").classList.toggle("opacity-30", i === 0);
-    $("lightboxNext").classList.toggle("opacity-30", i === lightboxKeys.length - 1);
+    $("lightboxNext").classList.toggle("opacity-30", i === list.length - 1);
     $("lightbox").classList.remove("hidden");
+  }
+
+  function openLightbox(i) {
+    openLightboxList(lightboxKeys.map(function (k) {
+      return { url: (active.photos || {})[k], label: labelFor(k) };
+    }), i);
   }
   function closeLightbox() { $("lightbox").classList.add("hidden"); $("lightboxImg").removeAttribute("src"); }
   $("lightboxClose").addEventListener("click", closeLightbox);
-  $("lightboxPrev").addEventListener("click", function () { if (lightboxIndex > 0) openLightbox(lightboxIndex - 1); });
-  $("lightboxNext").addEventListener("click", function () { if (lightboxIndex < lightboxKeys.length - 1) openLightbox(lightboxIndex + 1); });
+  $("lightboxPrev").addEventListener("click", function () { if (lightboxIndex > 0) openLightboxList(lightboxList, lightboxIndex - 1); });
+  $("lightboxNext").addEventListener("click", function () { if (lightboxIndex < lightboxList.length - 1) openLightboxList(lightboxList, lightboxIndex + 1); });
   $("lightbox").addEventListener("click", function (e) { if (e.target === this) closeLightbox(); });
   document.addEventListener("keydown", function (e) {
     if ($("lightbox").classList.contains("hidden")) return;
     if (e.key === "Escape") closeLightbox();
-    if (e.key === "ArrowLeft"  && lightboxIndex > 0) openLightbox(lightboxIndex - 1);
-    if (e.key === "ArrowRight" && lightboxIndex < lightboxKeys.length - 1) openLightbox(lightboxIndex + 1);
+    if (e.key === "ArrowLeft"  && lightboxIndex > 0) openLightboxList(lightboxList, lightboxIndex - 1);
+    if (e.key === "ArrowRight" && lightboxIndex < lightboxList.length - 1) openLightboxList(lightboxList, lightboxIndex + 1);
   });
 
   $("astrologerNotes").addEventListener("input", function () {
@@ -2187,6 +2239,124 @@
       $("notesStatus").textContent = "Saved";
     }
   }
+
+
+  /* ----------------------------------------------------------
+     Notebook pages: photos of handwritten notes, kept with the
+     reading. They go to Drive like the palm photos; only the
+     links are stored in the database.
+     ---------------------------------------------------------- */
+  function noteImages() {
+    var v = active && active.note_images;
+    return Array.isArray(v) ? v : [];
+  }
+
+  function renderNoteImages() {
+    var list = noteImages(), grid = $("noteImageGrid");
+    $("noteImageEmpty").classList.toggle("hidden", list.length > 0);
+    grid.innerHTML = list.map(function (url, i) {
+      return '<div class="relative group">' +
+          '<button type="button" class="note-img block w-full aspect-[3/4] bg-page rounded-2xl overflow-hidden ' +
+            'border-2 border-line hover:border-saffron transition" data-i="' + i + '">' +
+            '<img src="' + esc(driveThumb(url, 400)) + '" alt="Notebook page ' + (i + 1) + '" loading="lazy" ' +
+              'class="w-full h-full object-cover" ' +
+              'onerror="this.parentNode.innerHTML=\'<span class=&quot;text-[11px] text-ink-faint&quot;>No preview</span>\'">' +
+          '</button>' +
+          '<button type="button" class="note-del absolute -top-2 -right-2 w-7 h-7 rounded-full bg-sindoor text-white ' +
+            'text-sm font-extrabold shadow-card" data-i="' + i + '" aria-label="Remove this page">&times;</button>' +
+        '</div>';
+    }).join("");
+
+    Array.prototype.forEach.call(grid.querySelectorAll(".note-img"), function (b) {
+      b.addEventListener("click", function () {
+        openLightboxList(noteImages().map(function (u, n) {
+          return { url: u, label: "Notebook page " + (n + 1) };
+        }), Number(this.getAttribute("data-i")));
+      });
+    });
+    Array.prototype.forEach.call(grid.querySelectorAll(".note-del"), function (b) {
+      b.addEventListener("click", function () { removeNoteImage(Number(this.getAttribute("data-i"))); });
+    });
+  }
+
+  async function saveNoteImages(list) {
+    var forId = active.id;
+    var res = await client.from("palm_inquiries").update({ note_images: list }).eq("id", forId).select().single();
+    if (res.error) { toast("Couldn't save: " + res.error.message, "error"); return false; }
+    if (active && active.id === forId) {
+      active = res.data;
+      var idx = inquiries.findIndex(function (i) { return i.id === forId; });
+      if (idx > -1) inquiries[idx] = res.data;
+      renderNoteImages();
+    }
+    return true;
+  }
+
+  async function removeNoteImage(i) {
+    if (!active) return;
+    if (!window.confirm("Remove this page from the notes? The file stays in Drive.")) return;
+    var list = noteImages().slice();
+    list.splice(i, 1);
+    if (await saveNoteImages(list)) toast("Page removed");
+  }
+
+  // Phone photos of a notebook are large; shrink before sending.
+  function shrinkToBlob(file, maxEdge, quality) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file), img = new Image();
+      img.onload = function () {
+        URL.revokeObjectURL(url);
+        var w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+        var scale = Math.min(1, maxEdge / Math.max(w, h));
+        var c = document.createElement("canvas");
+        c.width = Math.round(w * scale); c.height = Math.round(h * scale);
+        var ctx = c.getContext("2d");
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(img, 0, 0, c.width, c.height);
+        c.toBlob(function (b) { b ? resolve(b) : reject(new Error("encode failed")); }, "image/jpeg", quality);
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error("decode failed")); };
+      img.src = url;
+    });
+  }
+
+  $("addNoteImageBtn").addEventListener("click", function () {
+    if (!active) return toast("Open a consultation first.", "error");
+    $("noteImageInput").value = "";
+    $("noteImageInput").click();
+  });
+
+  $("noteImageInput").addEventListener("change", async function (e) {
+    var files = Array.prototype.slice.call(e.target.files || []);
+    if (!files.length || !active) return;
+
+    var forId = active.id;
+    var mobile = String(active.mobile || "").replace(/\D/g, "");
+    var folder = mobile + "_" + String(forId).slice(0, 8) + "_notes";
+    var btn = $("addNoteImageBtn");
+    btn.disabled = true;
+
+    var added = [], failed = 0;
+    for (var i = 0; i < files.length; i++) {
+      setText("noteUploadStatus", "Sending " + (i + 1) + " of " + files.length + "…");
+      try {
+        var blob = await shrinkToBlob(files[i], 1800, 0.85);
+        var name = mobile + "_" + new Date().toISOString().slice(0, 10) + "_note_" +
+                   (noteImages().length + added.length + 1) + ".jpg";
+        added.push(await uploadOne(blob, name, mobile, forId, folder));
+      } catch (err) { console.error("Note page upload failed:", err); failed++; }
+    }
+
+    btn.disabled = false;
+    setText("noteUploadStatus", "");
+
+    // The reader may have moved on while these were uploading.
+    if (!active || active.id !== forId) { toast("Pages uploaded, reopen the client to see them."); return; }
+    if (added.length && await saveNoteImages(noteImages().concat(added))) {
+      toast(added.length + (added.length === 1 ? " page added" : " pages added"));
+    }
+    if (failed) toast(failed + " could not be sent", "error");
+  });
 
   async function updateStatus(newStatus) {
     if (!active) return false;
