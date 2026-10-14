@@ -538,7 +538,7 @@
   var SUPABASE_URL      = "https://simfpaytvkqgknrrhvoj.supabase.co";
   var SUPABASE_ANON_KEY = "sb_publishable_rfqgEkkZhzNEWKCxtPNZog_no_8KR5F";
 
-  var APP_VERSION   = "2026-10-14-a";
+  var APP_VERSION   = "2026-10-14-b";
   var MAX_EDGE      = 1400;
   var JPEG_QUALITY  = 0.82;
   var CHECK_EDGE    = 900;
@@ -1003,8 +1003,8 @@
       focus:  "the whole closed hand: curled fingers, knuckles and the creases across it" }
   ];
 
-  /* Generic silhouettes in a 300x400 box, drawn as the RIGHT hand as its owner
-     sees it (palm to camera, thumb on the right). The left hand is a mirror.
+  /* Generic silhouettes in a 300x400 box, drawn as the LEFT hand (palm to
+     camera, thumb on the right of the frame) -- see REFERENCE_HAND below.
      "region" is the part that must be sharp; "all" means the whole shape. */
   /* Hand diagrams drawn for this app — deliberately not photographs, so no
      real palm lines are published. Red dashes mark what the photo must show.
@@ -1041,9 +1041,14 @@
     thumb_venus:     { shape: "fistFront", extra: "fistThumb", region: "all" }
   };
 
-  /* The reference photos show a RIGHT hand as its owner sees it through the
-     rear camera. They and the silhouettes are mirrored for the left-hand round. */
-  var REFERENCE_HAND = "Right";
+  /* Which hand the drawings and silhouettes are built for. They are all drawn
+     as a LEFT hand: in full_open the thumb sits on the right of the frame, and
+     a palm facing an unmirrored rear camera with the thumb on the right is a
+     left palm. (Check back_hand the same way: thumb on the left there, which is
+     a left hand seen from behind.) So they are mirrored for the RIGHT round.
+     Do not "correct" this to "Right" without re-rendering the camera screen --
+     flipping it shows the client a left hand while they photograph their right. */
+  var REFERENCE_HAND = "Left";
   var HANDS = ["Right", "Left"];
   var STEPS_PER_HAND = BASE_STEPS.length;
 
@@ -1592,6 +1597,11 @@
     var refImg = $("modalRefArt"), guide = $("handGuide");
     var g = GUIDES[step.base];
 
+    // Which side the thumb lands on once mirroring is applied. The reference
+    // card is parked on the opposite corner, so it never sits on top of the
+    // thumb -- that is the landmark the client uses to tell the hands apart.
+    var thumbLeft = (step.hand !== REFERENCE_HAND) !== !!(g && g.flip);
+
     if (g && useLiveCamera) {
       var whole = g.region === "all";
       var dim   = 'fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="2.5" stroke-dasharray="8 6" stroke-linejoin="round"';
@@ -1603,8 +1613,7 @@
         (whole ? "" : g.region.replace("/>", " " + hot + "/>"));
       // Mirror for the other hand; the back-of-hand view mirrors again
       // because the thumb sits on the opposite side from behind.
-      var mirror = (step.hand !== REFERENCE_HAND) !== !!g.flip;
-      grp.setAttribute("transform", mirror ? "translate(300,0) scale(-1,1)" : "");
+      grp.setAttribute("transform", thumbLeft ? "translate(300,0) scale(-1,1)" : "");
       guide.classList.remove("hidden");
       $("handGuideHint").textContent = t("hint." + step.base);
       $("handGuideHint").dataset.wanted = "1";
@@ -1634,7 +1643,8 @@
     // empty, so the reference takes the space and becomes the main thing.
     thumbBtn.className = "absolute z-[25] rounded-xl overflow-hidden border-2 border-saffron " +
       "shadow-lg bg-black/40 active:scale-95 transition " +
-      (useLiveCamera ? "top-2 left-2 h-[42%]" : "top-3 left-1/2 -translate-x-1/2 h-[54%]");
+      (useLiveCamera ? ("top-2 h-[42%] " + (thumbLeft ? "right-2" : "left-2"))
+                     : "top-3 left-1/2 -translate-x-1/2 h-[54%]");
 
     setText("modalRefText", t("help.copyPose", { hand: handShort.toLowerCase() }));
 
